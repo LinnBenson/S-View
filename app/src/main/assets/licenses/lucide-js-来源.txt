@@ -1,0 +1,7 @@
+Lucide 浏览器脚本
+版本：1.77.0
+来源：https://unpkg.com/lucide@1.77.0/dist/umd/lucide.min.js
+项目：https://github.com/lucide-icons/lucide
+许可证：ISC，完整内容见 lucide-js-ISC.txt
+文件保持官方压缩内容，未修改。
+SHA-256：ba7d3dceda7534309da9eb5e48ec0b2434b4374431bca9772873e76184f8bf7f

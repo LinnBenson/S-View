@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 为启动器裁切预留边距，使桌面上的标记比例与原图一致。 -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/s_view_icon"
+    android:inset="16.67%" />

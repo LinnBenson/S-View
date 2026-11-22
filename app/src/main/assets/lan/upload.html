@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="sview-name" content="__SERVER_NAME__"><title>__SERVER_NAME__</title>
+<style>
+#sview-transfer-preview{--aj-bg:light-dark(#f5f6f8,#111215);--aj-surface:light-dark(#ffffff,#1b1d21);--aj-ink:light-dark(#202226,#f3f4f6);--aj-sub:light-dark(#737780,#a0a5ae);--aj-line:light-dark(#e5e7eb,#353840);--aj-soft:light-dark(#f4f5f7,#25282e);--aj-action:light-dark(#24272c,#f0f1f4);--aj-on-action:light-dark(#fff,#1a1c20);--aj-brand:light-dark(#536ce7,#9ba9ff);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--aj-ink);width:100%}
+#sview-transfer-preview *{box-sizing:border-box}
+#sview-transfer-preview .aj-page{padding:20px;margin:0;min-height:650px}
+#sview-transfer-preview .aj-header{display:flex;align-items:center;gap:12px;max-width:620px;margin:0 auto 28px}
+#sview-transfer-preview .aj-logo{height:38px;width:38px;background:var(--aj-ink);color:var(--aj-surface);border-radius:11px;display:grid;place-items:center}
+#sview-transfer-preview .aj-logo svg{width:22px;height:22px}
+#sview-transfer-preview .aj-brand{font-size:18px;font-weight:650;letter-spacing:-.5px}
+#sview-transfer-preview .aj-brand-sub{font-size:12px;color:var(--aj-sub);margin-top:1px}
+#sview-transfer-preview .aj-wifi{margin-left:auto;display:flex;gap:7px;align-items:center;font-size:12px;color:var(--aj-sub)}
+#sview-transfer-preview .aj-panel{max-width:620px;margin:auto;background:var(--aj-surface);border:1px solid var(--aj-line);border-radius:18px;overflow:hidden}
+#sview-transfer-preview .aj-auth{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 24px;border-bottom:1px solid var(--aj-line)}
+#sview-transfer-preview .aj-label{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+#sview-transfer-preview .aj-label svg{color:var(--aj-sub)}
+#sview-transfer-preview .aj-password{display:flex;align-items:center;gap:4px;min-width:0;width:220px;background:var(--aj-soft);border-radius:8px;padding:0 4px 0 12px}
+#sview-transfer-preview input[type=password],#sview-transfer-preview input[type=text]{border:0;background:transparent;color:var(--aj-ink);font:inherit;padding:9px 0;min-width:0;width:100%;outline-offset:3px}
+#sview-transfer-preview input::placeholder,#sview-transfer-preview textarea::placeholder{color:var(--aj-sub)}
+#sview-transfer-preview button{font:inherit;cursor:pointer}
+#sview-transfer-preview .aj-icon-button{border:0;background:transparent;color:var(--aj-sub);display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:6px}
+#sview-transfer-preview .aj-icon-button:hover{color:var(--aj-ink);background:var(--aj-line)}
+#sview-transfer-preview .aj-tabs{display:flex;gap:26px;padding:0 24px;border-bottom:1px solid var(--aj-line)}
+#sview-transfer-preview .aj-tab{position:relative;display:flex;align-items:center;gap:8px;padding:19px 2px 16px;border:0;background:transparent;color:var(--aj-sub);font-size:14px}
+#sview-transfer-preview .aj-tab:focus{outline:none}
+#sview-transfer-preview .aj-tab:focus-visible{background:transparent}
+#sview-transfer-preview .aj-tab[aria-selected=true]{color:var(--aj-ink);font-weight:600}
+#sview-transfer-preview .aj-tab[aria-selected=true]:after{content:"";height:2px;position:absolute;bottom:-1px;left:0;right:0;border-radius:2px;background:var(--aj-ink)}
+#sview-transfer-preview .aj-content{padding:25px 24px 22px}
+#sview-transfer-preview .aj-heading{font-size:20px;font-weight:600;letter-spacing:-.6px;margin:0 0 5px}
+#sview-transfer-preview .aj-caption{font-size:12px;color:var(--aj-sub);margin:0}
+#sview-transfer-preview .aj-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:210px;margin:22px 0 18px;border:1px dashed var(--aj-line);border-radius:12px;background:var(--aj-soft);text-align:center;padding:24px;transition:border-color .15s,background .15s}
+#sview-transfer-preview .aj-drop:hover,#sview-transfer-preview .aj-drop.is-over{border-color:var(--aj-brand);background:color-mix(in srgb,var(--aj-brand) 6%,var(--aj-surface))}
+#sview-transfer-preview .aj-file-icon{width:46px;height:54px;display:grid;place-items:center;background:var(--aj-surface);border:1px solid var(--aj-line);border-radius:10px;color:var(--aj-brand);margin-bottom:3px;transform:rotate(-5deg)}
+#sview-transfer-preview .aj-file-icon svg{width:23px;height:23px}
+#sview-transfer-preview .aj-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+#sview-transfer-preview .aj-drop:focus-within{outline:2px solid var(--aj-brand);outline-offset:3px}
+#sview-transfer-preview .aj-file-name{font-weight:500;overflow-wrap:anywhere;max-width:100%}
+#sview-transfer-preview .aj-sub{color:var(--aj-sub);font-size:12px}
+#sview-transfer-preview .aj-choice{color:var(--aj-brand)}
+#sview-transfer-preview .aj-footer-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px}
+#sview-transfer-preview .aj-destination{display:flex;align-items:center;gap:7px;color:var(--aj-sub);font-size:12px;min-width:0}
+#sview-transfer-preview .aj-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:9px;padding:11px 20px;background:var(--aj-action);color:var(--aj-on-action);font-weight:500;white-space:nowrap}
+#sview-transfer-preview .aj-primary:hover{opacity:.86}
+#sview-transfer-preview .aj-primary:disabled{opacity:.38}
+#sview-transfer-preview .aj-text{width:100%;display:block;border:0;border-radius:12px;background:var(--aj-soft);color:var(--aj-ink);padding:17px 18px;margin:22px 0 18px;min-height:210px;font:inherit;resize:vertical;outline-offset:3px}
+#sview-transfer-preview .aj-progress-wrap{margin:0 0 18px}
+#sview-transfer-preview .aj-progress-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:9px;font-size:12px;color:var(--aj-sub)}
+#sview-transfer-preview .aj-track{height:4px;background:var(--aj-soft);border-radius:4px;overflow:hidden}
+#sview-transfer-preview .aj-bar{height:100%;background:var(--aj-brand);width:0%;border-radius:4px;transition:width .3s}
+#sview-transfer-preview .aj-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:620px;margin:18px auto 0;color:var(--aj-sub);font-size:11px}
+#sview-transfer-preview .aj-bottom span{display:flex;gap:5px;align-items:center}
+#sview-transfer-preview .aj-feedback{font-size:12px;min-height:18px;margin-top:14px;color:var(--aj-sub)}
+#sview-transfer-preview [hidden]{display:none!important}
+#sview-transfer-preview svg{width:16px;height:16px;flex-shrink:0}
+@media(max-width:520px){#sview-transfer-preview .aj-page{padding:12px;margin:0;min-height:630px}#sview-transfer-preview .aj-header{margin-bottom:22px}#sview-transfer-preview .aj-auth{padding:16px;gap:12px}#sview-transfer-preview .aj-password{width:180px}#sview-transfer-preview .aj-content{padding:22px 16px 20px}#sview-transfer-preview .aj-tabs{padding:0 16px}#sview-transfer-preview .aj-drop{min-height:205px;padding:20px 12px}#sview-transfer-preview .aj-text{min-height:205px}#sview-transfer-preview .aj-primary{padding:11px 15px}#sview-transfer-preview .aj-wifi{display:none}#sview-transfer-preview input[type=password],#sview-transfer-preview input[type=text],#sview-transfer-preview textarea{font-size:16px}}
+@media(prefers-reduced-motion:reduce){#sview-transfer-preview *{transition:none!important}}
+
+#sview-transfer-preview #aj-access:focus,#sview-transfer-preview #aj-access:focus-visible{outline:none;box-shadow:none}
+#sview-transfer-preview .aj-password:focus-within{background:color-mix(in srgb,var(--aj-ink) 9%,var(--aj-surface))}
+
+#sview-transfer-preview .aj-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+html{color-scheme:light dark;background:#f1f2f4}body{margin:0;padding:0;background:#f1f2f4} @media(prefers-color-scheme:dark){html,body{background:#111215}}
+
+#sview-transfer-preview .aj-brand{overflow-wrap:anywhere}
+#sview-transfer-preview .aj-header>div:first-child{min-width:0}
+#sview-transfer-preview .aj-drop{padding:0;gap:0;overflow:hidden}
+#sview-transfer-preview .aj-picker{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%;min-height:208px;padding:24px;cursor:pointer}
+#sview-transfer-preview .aj-transfer-detail{width:100%;padding:15px 18px;border-top:1px solid var(--aj-line);text-align:left}
+#sview-transfer-preview .aj-transfer-detail:empty{display:none}
+#sview-transfer-preview .aj-progress-wrap{margin:0 0 10px}
+#sview-transfer-preview .aj-track{background:var(--aj-line)}
+#sview-transfer-preview .aj-detail-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+#sview-transfer-preview .aj-detail-row .aj-feedback{margin:0;min-height:0;overflow-wrap:anywhere;flex:1}
+#sview-transfer-preview .aj-feedback:empty{display:none}
+#sview-transfer-preview .aj-cancel{border:1px solid var(--aj-line);border-radius:7px;background:var(--aj-surface);color:var(--aj-ink);padding:6px 10px;font-size:12px;white-space:nowrap}
+#sview-transfer-preview .aj-bottom>span:last-child{display:block;text-align:right;overflow-wrap:anywhere;min-width:0}
+@media(max-width:520px){#sview-transfer-preview .aj-drop{padding:0}#sview-transfer-preview .aj-picker{padding:20px 12px;min-height:205px}#sview-transfer-preview .aj-transfer-detail{padding:12px}}
+
+#sview-transfer-preview .aj-result-host{position:relative}
+#sview-transfer-preview .aj-text-host{margin:22px 0 18px;border-radius:12px;overflow:hidden}
+#sview-transfer-preview .aj-text-host .aj-text{margin:0}
+#sview-transfer-preview .aj-result-mask{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--aj-soft);border-radius:inherit;color:var(--aj-ink);text-align:center;padding:20px}
+#sview-transfer-preview .aj-result-mask svg{width:46px;height:46px;color:#36946a}
+#sview-transfer-preview .aj-result-mask strong{font-size:16px;font-weight:600}
+
+#sview-transfer-preview [hidden]{display:none!important}
+#sview-transfer-preview .aj-entry{min-height:100dvh;display:grid;place-items:center;padding:32px 20px;background:radial-gradient(ellipse at 50% 18%,var(--aj-surface),transparent 65%)}
+#sview-transfer-preview .aj-entry-card{width:100%;max-width:390px;padding:34px 30px 28px;border:1px solid var(--aj-line);border-radius:24px;background:var(--aj-surface);box-shadow:0 16px 60px #00000005}
+#sview-transfer-preview .aj-entry-icon{width:52px;height:52px;display:grid;place-items:center;border:1px solid var(--aj-line);border-radius:16px;background:var(--aj-soft);margin-bottom:24px}
+#sview-transfer-preview .aj-entry-icon svg{width:24px;height:24px}
+#sview-transfer-preview .aj-entry-name{font-size:26px;font-weight:650;letter-spacing:-.8px;overflow-wrap:anywhere;margin:0}
+#sview-transfer-preview .aj-entry-sub{color:var(--aj-sub);font-size:13px;margin:6px 0 28px}
+#sview-transfer-preview .aj-entry .aj-auth{padding:0;border:0;display:block}
+#sview-transfer-preview .aj-entry .aj-label{font-size:12px;margin-bottom:9px;color:var(--aj-sub)}
+#sview-transfer-preview .aj-entry .aj-label svg{display:none}
+#sview-transfer-preview .aj-entry .aj-password{width:100%;border:1px solid transparent;transition:border-color .15s;background:var(--aj-soft);border-radius:12px}
+#sview-transfer-preview .aj-entry .aj-password:focus-within{border-color:var(--aj-sub)}
+#sview-transfer-preview .aj-entry input{font-size:16px;padding:15px 14px;min-width:0}
+#sview-transfer-preview .aj-entry .aj-primary{width:100%;justify-content:center;margin-top:4px;border-radius:12px;padding:14px;gap:10px}
+#sview-transfer-preview .aj-entry-error{color:#c95050;font-size:12px;min-height:24px;margin:7px 0 0}
+#sview-transfer-preview .aj-entry-footer{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:22px;color:var(--aj-sub);font-size:11px}
+#sview-transfer-preview .aj-entry-footer svg{width:14px;height:14px}
+@media(max-width:440px){#sview-transfer-preview .aj-entry{padding:24px 20px}#sview-transfer-preview .aj-entry-card{padding:28px 24px}}
+</style>
+</head><body>
+<div id="sview-transfer-preview" aria-label="局域网传送">
+<section class="aj-entry" id="aj-entry" hidden><form class="aj-entry-card" id="aj-entry-form"><div class="aj-entry-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div><h1 class="aj-entry-name">S View</h1><p class="aj-entry-sub">输入访问码，连接设备</p>      <div class="aj-auth"><label class="aj-label" for="aj-access"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 9 9m-3-3 3-3m-6 0 3-3"/></svg>访问码</label><div class="aj-password"><input id="aj-access" type="password" placeholder="输入访问码" maxlength="64" autocomplete="current-password" required aria-describedby="aj-entry-error"><button class="aj-icon-button cursor-interaction" id="aj-eye" aria-label="显示访问码" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><p class="aj-entry-error" id="aj-entry-error" role="alert"></p><button type="submit" class="aj-primary">连接设备 <span aria-hidden="true">→</span></button><div class="aj-entry-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg>局域网传送</div></form></section>
+  <div class="aj-page" hidden>
+    <header class="aj-header"><div><div class="aj-brand">S View</div><div class="aj-brand-sub">局域网传送</div></div><div class="aj-wifi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0m-10 4a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".5"/></svg> 同一网络，即刻传送</div></header>
+    <section class="aj-panel" aria-label="传送面板">
+
+      <nav class="aj-tabs" role="tablist" aria-label="传送类型"><button type="button" class="aj-tab cursor-interaction" role="tab" id="aj-files-tab" aria-controls="aj-files" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5h6l2 2h10v13H3Z M12 17V10m-3 3 3-3 3 3"/></svg>文件</button><button type="button" class="aj-tab cursor-interaction" role="tab" id="aj-text-tab" aria-controls="aj-text-panel" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M12 5v15m-4 0h8"/></svg>文字</button><button type="button" class="aj-tab cursor-interaction" role="tab" id="aj-image-tab" aria-controls="aj-image-panel" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>图像</button></nav>
+      <div class="aj-content" id="aj-files" role="tabpanel" aria-labelledby="aj-files-tab">
+        <h2 class="aj-heading">把文件传到设备</h2><p class="aj-caption">无需数据线，也无需安装其他应用。</p>
+        <label class="aj-drop cursor-interaction" id="aj-drop"><div class="aj-file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2h9l5 5v15H5Zm9 0v6h5M12 18v-7m-3 3 3-3 3 3"/></svg></div><span class="aj-file-name" id="aj-file-name">拖放文件到这里，或<span class="aj-choice">点击选择</span></span><span class="aj-sub" id="aj-file-meta">每次一个文件 · 最大 __MAX_FILE_MB__ MB</span><input type="file" id="aj-file-input" aria-label="选择要上传的文件"></label>
+        <div class="aj-progress-wrap" id="aj-progress-wrap" hidden><div class="aj-progress-head"><span id="aj-progress-status">正在上传</span><span id="aj-progress-number">0%</span></div><div class="aj-track" role="progressbar" id="aj-progress" aria-label="文件上传进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="aj-bar" id="aj-progress-bar"></div></div></div>
+        <div class="aj-footer-row"><span class="aj-destination"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5h6l2 2h10v13H3Z"/></svg>Download/</span><button type="button" class="aj-primary cursor-interaction" id="aj-upload">开始上传<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></button></div><div class="aj-feedback" id="aj-file-feedback" aria-live="polite"></div>
+      </div>
+      <div class="aj-content" id="aj-text-panel" role="tabpanel" aria-labelledby="aj-text-tab" hidden>
+        <h2 class="aj-heading">发一段文字</h2><p class="aj-caption">发送到设备。</p><label class="aj-sr-only" for="aj-message">要发送的文字</label><textarea class="aj-text" id="aj-message" maxlength="2000" placeholder="输入或粘贴文字…"></textarea><div class="aj-footer-row"><span class="aj-sub" id="aj-count">0 / 2000</span><button type="button" class="aj-primary cursor-interaction" id="aj-send">发送文字<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></button></div><div class="aj-feedback" id="aj-text-feedback" aria-live="polite"></div>
+      </div>
+<div class="aj-content" id="aj-image-panel" role="tabpanel" aria-labelledby="aj-image-tab" hidden>
+<h2 class="aj-heading">发送一张图片</h2><p class="aj-caption">保存到设备 Download 文件夹。</p>
+<label class="aj-drop cursor-interaction"><div class="aj-file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg></div><span class="aj-file-name" id="aj-image-name">拖放图片到这里，或<span class="aj-choice">点击选择</span></span><span class="aj-sub" id="aj-image-meta">每次一张 · 最大 __MAX_IMAGE_MB__ MB</span><img id="aj-image-preview" alt="所选图片预览" hidden style="max-width:100%;max-height:220px;object-fit:contain;border-radius:8px"><input id="aj-image-input" type="file" accept="image/*" aria-label="选择图片"></label>
+<div class="aj-footer-row"><span class="aj-destination">Download/</span><button type="button" class="aj-primary cursor-interaction" id="aj-image-send">发送图像<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></button></div><div class="aj-feedback" id="aj-image-feedback" aria-live="polite"></div></div>
+<div id="aj-transfer-controls" hidden style="padding:0 24px 20px;text-align:right"><button id="aj-cancel" type="button" class="aj-icon-button" style="width:auto;padding:0 12px">取消上传</button></div>
+    </section>
+    <footer class="aj-bottom"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7 7a7 7 0 0 0 0 10m10-10a7 7 0 0 1 0 10M4 4a11 11 0 0 0 0 16M20 4a11 11 0 0 1 0 16"/></svg> 保持设备运行窗口打开</span><span>S View · Transfer</span></footer>
+  </div>
+</div>
+<script>
+'use strict';
+
+const options = {name: document.querySelector('meta[name="sview-name"]').content, requiresToken: __REQUIRES_TOKEN__};
+const get=id=>document.getElementById(id), maxFileMB=__MAX_FILE_MB__;
+const entry=get('aj-entry'),transferPage=document.querySelector('.aj-page');
+entry.hidden=!options.requiresToken;transferPage.hidden=!!options.requiresToken;
+document.querySelector('.aj-entry-name').textContent=options.name||'S View';
+get('aj-entry-form').onsubmit=async e=>{
+ e.preventDefault();const button=e.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+ try{const r=await fetch('/auth',{method:'POST',headers:{'X-SView-Token':get('aj-access').value},body:'',signal:controller.signal});const data=await r.json();if(!r.ok)throw Error(data.message||'连接失败');entry.hidden=true;transferPage.hidden=false;get('aj-files-tab').focus();}
+ catch(error){get('aj-entry-error').textContent=error.name==='AbortError'?'连接超时，请重试':error.message||'连接失败';get('aj-access').setAttribute('aria-invalid','true');get('aj-access').focus();}
+ finally{clearTimeout(timeout);button.disabled=false;}
+};
+get('aj-access').addEventListener('input',()=>{get('aj-entry-error').textContent='';get('aj-access').removeAttribute('aria-invalid');});
+const displayName=typeof options.name==='string' && options.name.trim()?options.name.trim():'S View';
+document.querySelector('.aj-brand').textContent=displayName;
+document.querySelector('.aj-bottom>span:last-child').textContent=displayName+' · Transfer';
+document.title=displayName;
+get('sview-transfer-preview').setAttribute('aria-label',displayName+' 局域网传送');
+const filePlaceholder=get('aj-file-name').innerHTML,imagePlaceholder=get('aj-image-name').innerHTML;
+const resultKinds=new Set();
+const messageInput=get('aj-message'),messageHost=document.createElement('div');
+messageHost.className='aj-text-host aj-result-host';messageInput.replaceWith(messageHost);messageHost.append(messageInput);
+function showSuccess(kind){
+ resultKinds.add(kind);
+ const host=kind==='text'?messageHost:kind==='image'?imageBox.box:fileBox.box;
+ const mask=document.createElement('div');mask.className='aj-result-mask';mask.setAttribute('role','status');
+ mask.innerHTML='<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="m14 24 7 7 14-15"/></svg><strong></strong>';
+ mask.querySelector('strong').textContent=kind==='file'?'上传成功':'发送成功';host.append(mask);
+ if(kind==='text'){messageInput.readOnly=true;get('aj-send').disabled=true;}
+ else {uploading(true);get('aj-transfer-controls').hidden=true;}
+ return new Promise(resolve=>setTimeout(()=>{
+  if(kind==='text'){messageInput.value='';messageInput.readOnly=false;get('aj-count').textContent='0 / 2000';status('aj-text-feedback','');}
+  else {resetSelection(kind);status(kind==='image'?'aj-image-feedback':'aj-file-feedback','');}
+  mask.remove();resultKinds.delete(kind);
+  if(kind==='text')get('aj-send').disabled=false;else uploading(false);
+  resolve();
+ },2000));
+}
+
+function makeBox(inputId,feedbackId,id){
+ const picker=get(inputId).parentElement,box=document.createElement('div');
+ box.className='aj-drop';box.id=id;picker.replaceWith(box);box.append(picker);
+ picker.className='aj-picker';picker.removeAttribute('id');
+ const detail=document.createElement('div');detail.className='aj-transfer-detail';detail.hidden=true;
+ const row=document.createElement('div');row.className='aj-detail-row';row.append(get(feedbackId));detail.append(row);box.append(detail);
+ return {box,detail,row};
+}
+const fileBox=makeBox('aj-file-input','aj-file-feedback','aj-drop');
+const imageBox=makeBox('aj-image-input','aj-image-feedback','aj-image-drop');
+fileBox.detail.prepend(get('aj-progress-wrap'));
+get('aj-transfer-controls').removeAttribute('style');
+get('aj-cancel').className='aj-cancel';get('aj-cancel').removeAttribute('style');
+fileBox.row.append(get('aj-transfer-controls'));
+function resetSelection(kind){
+ if(kind==='image'){
+  image=null;get('aj-image-input').value='';get('aj-image-preview').hidden=true;get('aj-image-preview').removeAttribute('src');
+  if(imageUrl)URL.revokeObjectURL(imageUrl);imageUrl=null;get('aj-image-name').innerHTML=imagePlaceholder;get('aj-image-meta').textContent='每次一张 · 最大 __MAX_IMAGE_MB__ MB';
+ }else{
+  file=null;get('aj-file-input').value='';get('aj-file-name').innerHTML=filePlaceholder;
+  get('aj-file-meta').textContent='每次一个文件 · 最大 '+maxFileMB+' MB';get('aj-progress-wrap').hidden=true;
+ }
+}
+
+let activeTab='file',file=null,image=null,imageUrl=null,current=null;
+const tabs={file:['aj-files-tab','aj-files'],text:['aj-text-tab','aj-text-panel'],image:['aj-image-tab','aj-image-panel']};
+function tab(key){activeTab=key;for(const [k,[button,panel]] of Object.entries(tabs)){get(button).setAttribute('aria-selected',String(k===key));get(panel).hidden=k!==key;}}
+for(const [key,[button]] of Object.entries(tabs)){get(button).onclick=()=>tab(key);get(button).onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const keys=Object.keys(tabs);tab(keys[(keys.indexOf(activeTab)+(e.key==='ArrowRight'?1:2))%3]);get(tabs[activeTab][0]).focus();}};}
+function status(id,message){get(id).textContent=message;if(id==='aj-file-feedback')fileBox.detail.hidden=!message;if(id==='aj-image-feedback')imageBox.detail.hidden=!message;}
+function size(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB';}
+get('aj-eye').onclick=()=>{const f=get('aj-access');f.type=f.type==='password'?'text':'password';get('aj-eye').setAttribute('aria-label',f.type==='password'?'显示访问码':'隐藏访问码');};
+get('aj-message').oninput=()=>{get('aj-count').textContent=get('aj-message').value.length+' / 2000';};
+get('aj-send').onclick=async()=>{const text=get('aj-message').value;if(!text.trim()){status('aj-text-feedback','先输入要发送的文字');return;}get('aj-send').disabled=true;status('aj-text-feedback','发送中…');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{const r=await fetch('/text',{method:'POST',headers:{'X-SView-Token':get('aj-access').value,'Content-Type':'text/plain;charset=UTF-8'},body:text,signal:controller.signal});const data=await r.json();if(!r.ok)throw Error(data.message);status('aj-text-feedback','');await showSuccess('text');}catch(e){status('aj-text-feedback',e.name==='AbortError'?'发送超时，请重试':e.message||'连接失败');}finally{clearTimeout(timer);get('aj-send').disabled=false;}};
+function pickFile(f){if(current||resultKinds.size||!f)return;file=f;get('aj-file-name').textContent=f.name;get('aj-file-meta').textContent=size(f.size)+' · 已选择';get('aj-progress-wrap').hidden=true;status('aj-file-feedback','');}
+get('aj-file-input').onchange=e=>pickFile(e.target.files[0]);
+get('aj-drop').ondragover=e=>{e.preventDefault();if(!current)get('aj-drop').classList.add('is-over');};get('aj-drop').ondragleave=()=>get('aj-drop').classList.remove('is-over');get('aj-drop').ondrop=e=>{e.preventDefault();get('aj-drop').classList.remove('is-over');pickFile(e.dataTransfer.files[0]);};
+function pickImage(f){if(!f||current||resultKinds.size)return;if(imageUrl){URL.revokeObjectURL(imageUrl);imageUrl=null;}image=null;get('aj-image-preview').hidden=true;if(!f.type.startsWith('image/')){status('aj-image-feedback','请选择图片');return;}if(f.size>(__MAX_IMAGE_MB__*1048576)){status('aj-image-feedback','图片最大 __MAX_IMAGE_MB__ MB；大图片可通过文件页上传');return;}image=f;imageUrl=URL.createObjectURL(f);get('aj-image-preview').src=imageUrl;get('aj-image-preview').hidden=false;get('aj-image-name').textContent=f.name;get('aj-image-meta').textContent=size(f.size)+' · 已选择';status('aj-image-feedback','');}
+get('aj-image-input').onchange=e=>pickImage(e.target.files[0]);
+imageBox.box.ondragover=e=>{e.preventDefault();if(!current&&!resultKinds.size)imageBox.box.classList.add('is-over');};
+imageBox.box.ondragleave=()=>imageBox.box.classList.remove('is-over');
+imageBox.box.ondrop=e=>{e.preventDefault();imageBox.box.classList.remove('is-over');pickImage(e.dataTransfer.files[0]);};
+get('aj-image-preview').onerror=()=>{image=null;get('aj-image-preview').hidden=true;status('aj-image-feedback','无法预览此图片，请选择其他图片');};
+function uploading(on){for(const id of ['aj-upload','aj-image-send','aj-file-input','aj-image-input'])get(id).disabled=on;get('aj-transfer-controls').hidden=!on;}
+function upload(kind){if(current||resultKinds.size)return;const isImage=kind==='image',f=isImage?image:file,feedback=isImage?'aj-image-feedback':'aj-file-feedback';if(!f){status(feedback,isImage?'请先选择图片':'请先选择文件');return;}if(f.size>(isImage?(__MAX_IMAGE_MB__*1048576):maxFileMB*1048576)){status(feedback,isImage?'图片最大 __MAX_IMAGE_MB__ MB':'单个文件不能超过 '+maxFileMB+' MB');return;}const box=isImage?imageBox:fileBox;box.row.append(get('aj-transfer-controls'));const xhr=new XMLHttpRequest();current=xhr;uploading(true);status(feedback,'准备上传…');if(!isImage){get('aj-progress-wrap').hidden=false;get('aj-progress-bar').style.width='0%';get('aj-progress-number').textContent='0%';get('aj-progress').setAttribute('aria-valuenow','0');get('aj-progress-status').textContent='正在上传';}let last=0;xhr.open('POST',(isImage?'/image':'/upload')+'?name='+encodeURIComponent(f.name));xhr.setRequestHeader('X-SView-Token',get('aj-access').value);xhr.setRequestHeader('Content-Type','application/octet-stream');xhr.upload.onprogress=e=>{const now=Date.now();if(now-last<1000&&e.loaded!==e.total)return;last=now;const percent=e.total?Math.floor(e.loaded*100/e.total):0;status(feedback,percent===100?(isImage?'正在保存…':'正在保存…'):(isImage?percent+'% · ':'')+size(e.loaded)+' / '+size(e.total));if(!isImage){get('aj-progress-bar').style.width=percent+'%';get('aj-progress-number').textContent=percent+'%';get('aj-progress').setAttribute('aria-valuenow',String(percent));}};xhr.onload=()=>{try{const data=JSON.parse(xhr.responseText);if(xhr.status===200){status(feedback,'');showSuccess(kind);}else{status(feedback,data.message||'上传失败');if(!isImage)get('aj-progress-status').textContent='上传失败';}}catch(_){status(feedback,'服务响应异常');}};xhr.onerror=()=>status(feedback,'连接中断，请检查设备并重试');xhr.onabort=()=>status(feedback,'已取消上传');xhr.onloadend=()=>{current=null;if(!resultKinds.has(kind))uploading(false);};xhr.send(f);}
+get('aj-upload').onclick=()=>upload('file');get('aj-image-send').onclick=()=>upload('image');get('aj-cancel').onclick=()=>current?.abort();
+window.addEventListener('pagehide',()=>{current?.abort();if(imageUrl)URL.revokeObjectURL(imageUrl);});
+</script></body></html>

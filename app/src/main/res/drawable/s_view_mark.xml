@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="28dp"
+    android:viewportWidth="276"
+    android:viewportHeight="260">
+    <!-- 沿用桌面图标的折带轮廓，去除底板与阴影，便于小尺寸显示。 -->
+    <path
+        android:fillColor="#FF2B2B2B"
+        android:pathData="M89,0 H247 C264,0 274,14 274,31 V74 Q274,95 253,95 H149 L256,156 Q286,174 266,203 L227,243 Q210,260 183,260 H25 Q3,260 3,238 V188 Q3,165 25,165 H123 L18,109 Q-10,94 8,63 L52,18 Q68,0 89,0 Z" />
+</vector>

@@ -1,0 +1,47 @@
+
+## 原生网络桥
+
+`sview.network.request` 的 JS 封装单独放在 assets/runtime/network.js，由运行入口同步加载。网络帮助归属「网络」分类。创建任务的 JSON 只包含地址、请求头和长度等元数据，文件与流通过带会话认证、精确 Origin 和自定义请求头校验的本地 POST 通道传输；手机每块 64 KiB、手表每块 256 KiB，原生最大接收 256 KiB。四个原生任务各有一个上传和下载握手通道，未消费的块不会继续积压，取消不排在阻塞的读写任务后面。
+
+OkHttp 在原生执行网络请求，正常校验 HTTPS，不依赖目标站点的 CORS。Cookie 使用独立项目目录持久化；显式 Cookie 只转发到初始来源，跨来源重定向不携带。网络缓存目录随项目删除或清缓存清理。下载先写网络缓存临时文件，完整结束后发布到项目资源目录，不覆盖已有文件。进程直接被杀死留下的临时文件在下次初始化网络客户端时清理。
+
+运行窗口释放资源服务时同步取消全部网络任务、握手通道、超时任务、连接池及后台线程。JS 页面离开时也尝试取消；原生关闭仍是最终保障。流需消费或取消，超时覆盖流消费。自动响应实际解析 JSON，isJson() 不依赖服务端声明的 MIME；二进制、流和下载文件不为判断 JSON 而额外全量读取。
+
+## 窗口位置
+
+`Project.location` 使用 `WindowLocation` 的固定标识，默认 `center`。项目配置和 ZIP 备份共用 `ProjectJson`，位置随配置保存与还原。运行窗口在安全显示区域内按七种对齐方式摆放，左右使用物理方向，不随界面文字方向反转。
+
+`interaction.location(position, persist)` 默认只修改运行状态；持久化复用项目保存队列，只更新位置字段，避免覆盖其他配置。位置实际改变时通过现有事件连接发送 `onLocation({ location })`。注册监听后立即调用位置接口，会先等待事件连接建立，避免遗漏第一次事件。
+
+`interaction.removeClose()` 只隐藏当前运行框的原生悬浮关闭按钮，不操作网页 DOM，不写入配置。重新运行恢复按钮；返回关闭和脚本关闭继续使用现有生命周期与资源清理入口。
+
+## 圆角与遮罩
+
+项目保存 `cornerRadius`（dp，默认 20）和 `backdropTransparency`（百分比，默认 40）。默认透明度对应原先 Material 主题的 `backgroundDimAmount=0.6`。运行窗口将透明度换算成 Android 的遮罩不透明度；100% 透明不暗化底层页面，0% 完全遮黑，不改变网页自身背景或内容透明度。
+
+圆角为非负数，显示时限制为当前窗口短边的一半，同时应用于 Compose 裁切与 GeckoView 背景轮廓。两个字段均由 ProjectJson 保存并随项目 ZIP 导出还原，圆角可通过 sview.interaction.cornerRadius(value, persist = false) 修改，value 为非负有限 dp 数值。
+
+
+## 窗口边距
+
+上下百分比以安全区域高度为基准，左右以宽度为基准，均在扣除边距前计算；px 按当前屏幕密度转换，数值输入按 dp 解释。
+
+`WindowMargins` 保存 top、right、bottom、left 四个带 dp、px 或 % 单位的非负值，默认均为 0。边距相对安全显示区域计算，窗口在剩余区域对齐，百分比宽高也以剩余区域为基准。两侧总边距过大时同比缩小显示值并保留至少 1dp，配置原值不变。左右边距使用物理方向。
+
+`interaction.margin({ top, right, bottom, left }, persist=false)` 复用配置保存队列，持久化只更新边距。`monitor.onMargin` 接收相同结构且保留单位的字符串配置，配置变化才推送，重复值不推送；实际内容尺寸变化仍由 onResize 通知。四边距随 ProjectJson 和 ZIP 导出还原，未增加定时轮询。
+
+## 图片预览
+
+`interaction.preview(path)` 复用 StoragePaths 的项目范围、设备授权和符号链接检查。ImagePreviewController 在接口线程限尺寸解码，主线程创建独立全屏 Dialog；后台或运行窗口关闭时递增代次并清理预览，迟到结果不会重新打开窗口。悬浮运行使用已有悬浮窗授权，不改变项目原窗口配置。每个会话仅允许一个正在解码的请求，成功重复调用替换已显示的预览。
+
+PreviewImageView 使用原生 Canvas 与系统缩放、双击手势。手机基准为 contain，手表基准为 cover；下限为基准一半与完整显示比例中的较小值，圆屏按图片四角位于椭圆内计算。缩放围绕双指中心，位移限制在图片边界，双击和视口尺寸变化复位。只在手势或尺寸变化时重绘。图片长边限制 2048 像素，Android 28 起由 ImageDecoder 处理方向，旧系统采样后按 EXIF 修正。
+
+图片预览不显示关闭按钮。单击图片区域经 onSingleTapConfirmed 确认后关闭，双击仅复位；黑边、拖动与双指缩放不触发关闭。视图移除时取消手势识别器的待处理事件。
+
+## 脚本退出应用
+
+`interaction.closeThis()` 与 close 一样先发送接口响应，再启动关闭。RuntimeAppExit 在主线程注册各运行窗口的关闭与释放等待函数，使用独立于页面的协程完成退出。WorkspaceModel.prepareAppExit 禁止新运行，等待同步、缓存和归档结束，通知所有窗口正常关闭，等待资源释放，再复用保存队列与日志屏障完成落盘。随后停止悬浮服务、移除本应用任务、清理 ViewModel，并复用 AppProcessExit 关闭引擎及同 UID 的本应用辅助进程。手表原有主动退出复用相同的准备过程。重复调用不会启动多个退出流程。
+
+## 运行亮屏
+
+RuntimeWindowHost 在实际承载内容的 LocalView 上设置 keepScreenOn，覆盖 Activity、Dialog 与悬浮运行分支；组合移除时恢复原值。图片预览的独立 Dialog 使用 FLAG_KEEP_SCREEN_ON，关闭窗口即释放。由可见窗口向系统申请保持亮屏，不使用 WakeLock、周期唤醒或修改系统熄屏设置。

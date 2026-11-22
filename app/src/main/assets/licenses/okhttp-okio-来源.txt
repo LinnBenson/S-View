@@ -1,0 +1,4 @@
+OkHttp 4.12.0 与 Okio
+版权所有：Square, Inc. 及贡献者
+许可证：Apache License 2.0，全文见 okhttp-okio-Apache-2.0.txt。
+源码：https://github.com/square/okhttp 与 https://github.com/square/okio

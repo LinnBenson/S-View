@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 原生网络接口允许用户请求 HTTP 地址；HTTPS 仍使用系统证书校验。 -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

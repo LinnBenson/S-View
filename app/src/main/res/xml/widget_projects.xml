@@ -1,0 +1,9 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp" android:minHeight="110dp"
+    android:targetCellWidth="2" android:targetCellHeight="2"
+    android:minResizeWidth="50dp" android:minResizeHeight="50dp"
+    android:maxResizeWidth="500dp" android:maxResizeHeight="500dp"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_projects" android:previewLayout="@layout/widget_preview"
+    android:configure="io.todu.sview.widget.WidgetConfigActivity"
+    android:widgetFeatures="reconfigurable" android:widgetCategory="home_screen" />
