@@ -63,9 +63,7 @@ class SystemApiBridge(uiContext: Context, private val project: Project, private 
         }
         return when (request) {
             is SystemApiRequest.Toast -> {
-                toast?.cancel()
-                toast = Toast.makeText(context, request.message,
-                    if (request.duration == "long") Toast.LENGTH_LONG else Toast.LENGTH_SHORT).also { it.show() }
+                showToast(request.message, if (request.duration == "long") Toast.LENGTH_LONG else Toast.LENGTH_SHORT)
                 JSONObject.NULL
             }
             is SystemApiRequest.Notify -> ScriptNotifications.post(context, project, request)
@@ -73,7 +71,11 @@ class SystemApiBridge(uiContext: Context, private val project: Project, private 
             is SystemApiRequest.OpenApp -> { navigation.openApp(request.packageName); JSONObject.NULL }
             is SystemApiRequest.OpenLink -> { navigation.openLink(request.url); JSONObject.NULL }
             SystemApiRequest.ReadClipboard -> device.readClipboard()
-            is SystemApiRequest.WriteClipboard -> { device.writeClipboard(request.text); JSONObject.NULL }
+            is SystemApiRequest.WriteClipboard -> {
+                device.writeClipboard(request.text)
+                showToast("已复制")
+                JSONObject.NULL
+            }
             is SystemApiRequest.Share -> { navigation.share(request.text, request.title); JSONObject.NULL }
             SystemApiRequest.RotationSettings -> device.rotationSettings()
             SystemApiRequest.CancelVibration -> { device.cancelVibration(); JSONObject.NULL }
@@ -91,6 +93,12 @@ class SystemApiBridge(uiContext: Context, private val project: Project, private 
     }
 
     fun background() { health.cancel(); location.cancel(); device.close(); installer.background(); wifiScan.cancel(); bluetoothScan.cancel() }
+
+    /** 复用当前提示，连续操作时不堆积 Toast；复制提示只在写入成功后显示。 */
+    private fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        toast?.cancel()
+        toast = Toast.makeText(context, message, duration).also { it.show() }
+    }
 
     /** 由运行窗口在主线程释放，取消排队调用和尚未结束的短时效果。 */
     override fun close() {

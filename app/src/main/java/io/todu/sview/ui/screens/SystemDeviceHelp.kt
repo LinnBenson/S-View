@@ -77,7 +77,7 @@ internal val deviceInterfaceHelp = listOf(
     InterfaceHelpEntry(
         name = "sview.system.writeClipboard",
         brief = "写入剪切板文字",
-        summary = "写入剪切板文字" ,
+        summary = "写入剪切板文字，成功后显示“已复制”提示。",
         parameters = listOf(InterfaceParameter("text", "string", true, "要复制的文字，最多 8192 个字符；允许空字符串。")),
         resultType = "Promise<void>",
         result = "无返回数据，表示已写入系统剪切板。",

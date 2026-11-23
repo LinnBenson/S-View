@@ -266,3 +266,11 @@ function scrollTop( selector ) {
         });
     });
 }
+/**
+ * 获取选择器匹配的元素数量
+ * @param {string} selector CSS 选择器
+ * @returns {number} 匹配数量，未找到时返回 0
+ */
+function countTag( selector ) {
+    return document.querySelectorAll( selector ).length;
+}

@@ -261,4 +261,22 @@ scrollTop('body');""",
         note = "由 global.js 提供，请先在项目引用项中加载。内部容器需设置高度或最大高度，并启用 overflow-y: auto 或 scroll。应在目标元素创建后调用。",
         category = "工具",
     ),
+    InterfaceHelpEntry(
+        name = "countTag",
+        brief = "检查元素并返回数量",
+        summary = "返回 CSS 选择器匹配的元素数量，可通过结果是否大于 0 判断元素是否存在。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器，例如 #app、.card 或 ul > li。")
+        ),
+        resultType = "number",
+        result = "返回匹配的元素数量；没有匹配元素时返回 0。",
+        failure = "选择器语法无效时抛出异常。",
+        example = """const count = countTag('ul > li');
+console.log(count);
+if (countTag('#app')) {
+    console.log('元素存在');
+}""",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
 )

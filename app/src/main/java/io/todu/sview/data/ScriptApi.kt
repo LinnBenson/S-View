@@ -69,7 +69,10 @@ object ScriptApi {
                 async removeClose() { await call('interaction.removeClose', {}); },
                 async resize(width, height, persist = false) { await call('interaction.resize', { width, height, persist }); }
             },
-            script: { log: readProjectLog, getShare: getSharedContent, db: ${ScriptDatabaseApi.SCRIPT} }, tools: {}
+            script: {
+                md5(text) { return call('script.md5', { text }); },
+                qrcode(text) { return call('script.qrcode', { text }); },
+                log: readProjectLog, getShare: getSharedContent, db: ${ScriptDatabaseApi.SCRIPT} }, tools: {}
         };
         Object.defineProperty(globalThis, 'sview', { value: sview, writable: false });
     })();"""

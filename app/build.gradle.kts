@@ -13,8 +13,8 @@ android {
         applicationId = "io.todu.sview"
         minSdk = 26
         targetSdk = 36
-        versionCode = 131
-        versionName = "1.3.6"
+        versionCode = 132
+        versionName = "1.3.7"
 
     }
 
@@ -47,6 +47,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.health:health-services-client:1.1.0")
     implementation("androidx.wear.tiles:tiles:1.5.0")

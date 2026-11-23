@@ -263,6 +263,6 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 | jQuery | MIT |
 | Alpine.js 及其 Vue 响应式模块 | MIT |
 | JetBrains Mono | SIL Open Font License |
-| OkHttp、Okio、Prism4j | Apache License 2.0 |
+| OkHttp、Okio、Prism4j、ZXing Core | Apache License 2.0 |
 
 随附许可文件位于 [`app/src/main/assets/licenses/`](app/src/main/assets/licenses/)；Lucide 图标资源另附 [许可证](app/src/main/assets/lucide/LICENSE)。GeckoView 的源码及构建信息可参阅 [Mozilla 项目文档](https://firefox-source-docs.mozilla.org/mobile/android/geckoview/)。
