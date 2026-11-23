@@ -154,8 +154,8 @@ main#app {
     margin-bottom: 8px;
 }
 [box] [icon] .lucide {
-    width: 46px;
-    height: 46px;
+    width: 41px;
+    height: 41px;
     stroke-width: 1.2;
 }
 [box] [title] { font-weight: bold; }
@@ -184,7 +184,7 @@ main#app {
     display: flex;
     align-items: center;
     padding: var( --padding );
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     background: rgb( var( --r6 ) );
     border-radius: var( --radius );
     box-sizing: border-box;
@@ -309,6 +309,6 @@ main#app {
     }
     [item] {
         --padding: 10px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 }

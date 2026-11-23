@@ -15,6 +15,7 @@ internal val localServerInterfaceHelp = listOf(true, false).map { chat ->
             InterfaceParameter("options.maxFileSizeMB", "number", false, "单个文件大小上限，1–512 MB。", "512"),
             InterfaceParameter("options.maxImageSizeMB", "number", false, "单张图片大小上限，1–512 MB。支持常见位图，不支持 SVG。", "512")
         ) + listOf(
+            InterfaceParameter("options.onStart", "function(handle)", false, "启动成功后调用一次，参数与 Promise 返回的只读对象相同。先于启动期间排队的事件触发；启动失败不触发。回调不等待异步任务，请直接使用参数中的句柄。"),
             InterfaceParameter("options.onClose", "function", false, "主动关闭或服务停止时调用 onClose()，每个服务只触发一次。启动失败不触发。")
         ) + if (chat) listOf(
             InterfaceParameter("options.onMessage", "function", false, "接收 { id, senderId, type, time, text, name, size, system }。type 为 text、image 或 file；time 为毫秒时间戳。不适用字段为 null。脚本 send 发送的系统消息不触发此回调。"),
@@ -37,6 +38,7 @@ internal val localServerInterfaceHelp = listOf(true, false).map { chat ->
       chat.send('欢迎加入').catch(console.error);
     }
   },
+  onStart(handle) { console.log('服务已启动', handle.url); },
   onError(error) { console.error(error.message); },
   onClose() { console.log('服务已关闭'); }
 });
@@ -46,6 +48,7 @@ console.log(chat.url);
   onText(text) { console.log(text); },
   onFile(percent, path) { console.log('文件', percent, path); },
   onImage(percent, path) { console.log('图片', percent, path); },
+  onStart(handle) { console.log('服务已启动', handle.url); },
   onError(error) { console.error(error.message); },
   onClose() { console.log('服务已关闭'); }
 });

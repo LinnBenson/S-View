@@ -11,6 +11,7 @@ internal val customServerInterfaceHelp = InterfaceHelpEntry(
         InterfaceParameter("options.port", "number", false, "监听端口，1024–65535；不同服务使用不同端口。", "8080"),
         InterfaceParameter("options.onRequest", "function", false, "接收标准 Request，返回 Response 或 Promise<Response>。可读取 url、method、headers，并使用 text()、json()、formData()、blob()、arrayBuffer() 读取正文。request.signal 在超时或服务关闭时取消。"),
         InterfaceParameter("options.onError", "function", false, "接收 { message, code?, requestId? }。启动失败同时拒绝 Promise；单个请求失败不会关闭服务器。"),
+        InterfaceParameter("options.onStart", "function(handle)", false, "启动成功后调用一次，参数与 Promise 返回的只读对象相同。先于启动期间排队的事件触发；启动失败不触发。回调不等待异步任务，请直接使用参数中的句柄。"),
         InterfaceParameter("options.onClose", "function", false, "主动关闭或网络失效时调用一次；启动失败不触发。"),
         InterfaceParameter("options.timeout", "number", false, "请求超时毫秒数，1000–300000。等待动态响应超时返回 504；连接超过期限会断开。", "30000"),
         InterfaceParameter("options.maxBodySizeMB", "number", false, "请求正文上限，1–512 MiB，超过返回 413。手表上建议保持较小值。", "16"),
@@ -37,6 +38,7 @@ const server = await sview.network.server({
     return new Response('未找到', { status: 404 });
   },
   onError(error) { console.error(error.message); },
+  onStart(handle) { console.log('服务器已启动', handle.url); },
   onClose() { console.log('服务器已关闭'); }
 });
 console.log(server.url);

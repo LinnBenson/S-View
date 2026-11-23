@@ -24,7 +24,7 @@ object ScriptLocalServers {
             invokeLocalServerCallback(record, item.kind, item.value);
         }
         function invokeLocalServerCallback(record, kind, value, fallback = true) {
-            const names = { message: 'onMessage', text: 'onText', file: 'onFile', image: 'onImage', error: 'onError', closed: 'onClose' };
+            const names = { started: 'onStart', message: 'onMessage', text: 'onText', file: 'onFile', image: 'onImage', error: 'onError', closed: 'onClose' };
             const callback = record.options[names[kind]];
             if (!callback) {
                 if (kind === 'error' && fallback) reportInterfaceError(value, 'network.' + (record.kind || 'server'), 'interface');
@@ -36,7 +36,7 @@ object ScriptLocalServers {
         }
         async function startLocalServer(kind, options = {}) {
             if (!options || typeof options !== 'object' || Array.isArray(options)) throw invalidArgument('需要传入配置对象');
-            for (const key of ['onMessage', 'onText', 'onFile', 'onImage', 'onError', 'onClose', 'onRequest']) {
+            for (const key of ['onStart', 'onMessage', 'onText', 'onFile', 'onImage', 'onError', 'onClose', 'onRequest']) {
                 if (options[key] !== undefined && typeof options[key] !== 'function') throw invalidArgument(key + ' 应为函数');
             }
             for (const key of ['port', 'maxFileSizeMB', 'maxImageSizeMB', 'timeout', 'maxBodySizeMB', 'maxConcurrentRequests']) {
@@ -74,10 +74,13 @@ object ScriptLocalServers {
                     if (record.closed) return Promise.reject(Object.assign(new Error('服务已关闭'), { code: 'INVALID_STATE' }));
                     return call('network.localServer.send', { id, text });
                 };
+                // 先交付完整句柄，再派发启动期间排队的消息或关闭事件。
+                Object.freeze(handle);
+                invokeLocalServerCallback(record, 'started', handle);
                 record.starting = false;
                 for (const item of record.events) deliverLocalServerEvent(item, record);
                 record.events = [];
-                return Object.freeze(handle);
+                return handle;
             } catch (error) { localServers.delete(id); invokeLocalServerCallback(record, 'error', error, false); throw error; }
         }
     """
