@@ -16,23 +16,45 @@ internal object BrowserEngine {
     private val sessions = mutableMapOf<GeckoSession, String>()
     private fun storageState(context: Context) = context.getSharedPreferences("browser_storage_state", Context.MODE_PRIVATE)
 
+    /** 启动准备在 IO 线程调用；已标记的后续会话不再同步写盘。 */
+    @Synchronized
+    fun prepareStorage(context: Context) {
+        val state = storageState(context)
+        if (!state.contains("empty") || state.getBoolean("empty", false)) {
+            check(state.edit().putBoolean("empty", false).commit()) { "无法记录网页存储状态" }
+        }
+    }
+
     private fun get(context: Context): GeckoRuntime = runtime ?: run {
-        // 初始化前撤销已清空标记；进程意外退出也不能误判历史网页数据为空。
-        check(storageState(context).edit().putBoolean("empty", false).commit()) { "无法记录网页存储状态" }
-        GeckoRuntime.create(context.applicationContext).also { runtime = it }
+        // 清理接口也可能首先初始化内核，仍须先撤销已清空标记。
+        prepareStorage(context)
+        GeckoRuntime.create(context.applicationContext).also {
+            runtime = it
+            BrowserEngineVisibility.install(context)
+        }
     }
 
     /** 同一项目复用持久化容器，不同项目即使地址相同也不共享网页数据。 */
-    fun openSession(context: Context, projectId: String): GeckoSession {
-        check(storageState(context).edit().putBoolean("empty", false).commit()) { "无法记录网页存储状态" }
+    fun openSession(context: Context, projectId: String, overlay: Boolean = false): GeckoSession {
+        prepareStorage(context)
         val session = GeckoSession(GeckoSessionSettings.Builder().contextId(contextId(context, projectId)).build())
-        session.open(get(context))
+        val engine = get(context)
+        try {
+            if (overlay) BrowserEngineVisibility.acquire(session)
+            session.open(engine)
+        } catch (error: Exception) {
+            BrowserEngineVisibility.release(session)
+            throw error
+        }
         sessions[session] = projectId
         return session
     }
 
     fun closeSession(session: GeckoSession) {
-        try { session.close() } finally { sessions.remove(session) }
+        try { session.close() } finally {
+            sessions.remove(session)
+            BrowserEngineVisibility.release(session)
+        }
     }
 
     /** 删除前检查活动会话，避免源文件已经删除后才发现窗口仍在运行。 */

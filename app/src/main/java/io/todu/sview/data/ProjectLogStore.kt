@@ -29,6 +29,12 @@ class ProjectLogStore(private val projectDirectory: (String) -> File) {
     fun size(id: String): Long = file(id).length()
     fun read(id: String): String = tail(file(id), 256 * 1024)
 
+    /** 脚本读取完整保留日志，使用现有轮转上限，不套用日志详情页的截取大小。 */
+    fun readAll(id: String): String {
+        val source = file(id)
+        return if (source.exists()) source.readText() else ""
+    }
+
     /** 搜索整份保留日志，限制返回体积，避免将全部内容塞入界面。 */
     fun search(id: String, query: String): String {
         if (query.isBlank()) return read(id)

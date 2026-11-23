@@ -42,10 +42,14 @@ internal class ImagePreviewController(private val context: Context, projectId: S
         }
         try {
             main.invoke { ensureActive(); JSONObject.NULL }
-            val bitmap = PreviewImageLoader.load(paths.resolve(path).file)
+            val watch = WatchDevice.isWatch(context)
+            val display = context.resources.displayMetrics
+            val bitmap = PreviewImageLoader.load(paths.resolve(path).file,
+                if (watch) maxOf(display.widthPixels, display.heightPixels) else null)
+            // 解码期间可能已关闭窗口；尚未交给视图的位图可立即回收。
+            try { ensureActive() } catch (error: Exception) { bitmap.recycle(); throw error }
             main.invoke {
                 ensureActive()
-                val watch = WatchDevice.isWatch(context)
                 val next = Dialog(context, android.R.style.Theme_Material_NoActionBar_Fullscreen)
                 val window = requireNotNull(next.window)
                 if (!hasActivity(context)) window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)

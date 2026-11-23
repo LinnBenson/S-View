@@ -73,19 +73,15 @@ class ProjectWidget : AppWidgetProvider() {
             ids.forEach { id ->
                 val options = manager.getAppWidgetOptions(id)
                 val selected = WidgetStore.read(context, id)
-                fun layout(width: Float, height: Float): RemoteViews {
-                    val (columns, rows) = WidgetGridSizing.resolve(context, id, width, height)
-                    return grid(context, id, selected, projects, columns, rows)
-                }
+                val layouts = WidgetGridSizing.layouts(context, id, options)
+                fun render(layout: WidgetGridSizing.Layout): RemoteViews =
+                    grid(context, id, selected, projects, layout.columns, layout.rows)
                 val sizes = if (Build.VERSION.SDK_INT >= 31) options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES) else null
-                val views = if (Build.VERSION.SDK_INT >= 31 && !sizes.isNullOrEmpty()) {
-                    RemoteViews(sizes.take(16).associateWith { layout(it.width, it.height) })
-                } else {
-                    val minW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 130).toFloat()
-                    val minH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 130).toFloat()
-                    val maxW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 130).toFloat()
-                    val maxH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 130).toFloat()
-                    RemoteViews(layout(maxW, minH), layout(minW, maxH))
+                val views = when {
+                    layouts.isEmpty() -> grid(context, id, selected, projects, 1, 1)
+                    Build.VERSION.SDK_INT >= 31 && !sizes.isNullOrEmpty() ->
+                        RemoteViews(layouts.associate { SizeF(it.width, it.height) to render(it) })
+                    else -> RemoteViews(render(layouts.first()), render(layouts.last()))
                 }
                 manager.updateAppWidget(id, views)
             }

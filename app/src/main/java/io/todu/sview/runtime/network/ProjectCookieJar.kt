@@ -23,7 +23,7 @@ internal class ProjectCookieJar(private val file: File) : CookieJar {
                 else builder.domain(value.getString("domain"))
                 if (value.getBoolean("secure")) builder.secure()
                 if (value.getBoolean("httpOnly")) builder.httpOnly()
-                cookies.add(builder.build())
+                builder.build().takeIf { it.expiresAt > System.currentTimeMillis() }?.let(cookies::add)
             }
         }
     }
@@ -38,10 +38,22 @@ internal class ProjectCookieJar(private val file: File) : CookieJar {
 
     @Synchronized override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         if (closed || cookies.isEmpty()) return
+        val now = System.currentTimeMillis()
+        var changed = this.cookies.removeAll { it.expiresAt <= now }
         cookies.forEach { cookie ->
-            this.cookies.removeAll { it.name == cookie.name && it.domain == cookie.domain && it.path == cookie.path }
-            if (cookie.expiresAt > System.currentTimeMillis()) this.cookies.add(cookie)
+            val previous = this.cookies.indexOfFirst { it.name == cookie.name && it.domain == cookie.domain && it.path == cookie.path }
+            if (cookie.expiresAt <= now) {
+                if (previous >= 0) { this.cookies.removeAt(previous); changed = true }
+            } else if (previous < 0) {
+                this.cookies.add(cookie); changed = true
+            } else {
+                // 保持原有更新顺序，同名不同路径 Cookie 的选择顺序不变。
+                if (this.cookies[previous] != cookie || previous != this.cookies.lastIndex) changed = true
+                this.cookies.removeAt(previous)
+                this.cookies.add(cookie)
+            }
         }
+        if (!changed) return
         // 会话 Cookie 也随项目保留，直到过期、服务端删除或用户清理缓存。
         val data = JSONArray()
         this.cookies.forEach { cookie -> data.put(JSONObject().put("name", cookie.name).put("value", cookie.value)

@@ -5,14 +5,17 @@ import org.json.JSONObject
 import java.io.Closeable
 import java.net.Socket
 import java.util.ArrayDeque
-import java.util.concurrent.Executors
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 /** 空闲不轮询；保存有限历史供断线重放，写线程不在持有状态锁时访问套接字。 */
 class WindowEvents(private val release: (Socket) -> Unit = {}) : Closeable {
     private data class Event(val id: Long, val name: String, val data: String)
     private class Client(val socket: Socket, var cursor: Long, var header: Boolean = true)
     private val lock = Any()
-    private val writes = Executors.newSingleThreadExecutor { task -> Thread(task, "窗口事件发送").apply { isDaemon = true } }
+    private val writes = ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, LinkedBlockingQueue<Runnable>(),
+        java.util.concurrent.ThreadFactory { task -> Thread(task, "窗口事件发送").apply { isDaemon = true } }).apply { allowCoreThreadTimeOut(true) }
     private val history = ArrayDeque<Event>()
     private var sequence = 0L
     private var retainedBytes = 0
@@ -82,7 +85,14 @@ class WindowEvents(private val release: (Socket) -> Unit = {}) : Closeable {
                 if (disposed || target == null) { draining = false; return }
                 val first = history.peekFirst()?.id ?: sequence + 1
                 val gap = target.cursor < first - 1
-                val pending = history.filter { it.id > target.cursor }
+                val pending = ArrayList<Event>()
+                var characters = 0
+                for (event in history) {
+                    if (event.id <= target.cursor) continue
+                    if (pending.isNotEmpty() && (pending.size >= 32 || characters + event.data.length > 32768)) break
+                    pending.add(event)
+                    characters += event.data.length
+                }
                 if (!target.header && !gap && pending.isEmpty()) { draining = false; return }
                 val text = buildString {
                     if (target.header) {
@@ -92,7 +102,7 @@ class WindowEvents(private val release: (Socket) -> Unit = {}) : Closeable {
                         if (ending) append("event: close\ndata: {}\n\n")
                     }
                     if (gap) append("event: runtime-error\ndata: {\"code\":\"EVENT_GAP\",\"type\":\"connection\",\"message\":\"事件连接中断过久，部分历史已过期\"}\n\n")
-                    pending.forEach { append("id: ${it.id}\nevent: ${it.name}\ndata: ${it.data}\n\n") }
+                    pending.forEach { append("id: ").append(it.id).append("\nevent: ").append(it.name).append("\ndata: ").append(it.data).append("\n\n") }
                 }
                 Triple(target, text, pending.lastOrNull()?.id ?: sequence)
             }

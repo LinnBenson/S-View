@@ -12,6 +12,7 @@ internal object ApiErrors {
     fun cause(error: Throwable): Throwable = if (error is ExecutionException && error.cause != null) cause(error.cause!!) else error
     fun code(error: Throwable): String = when (val value = cause(error)) {
         is ApiException -> value.code
+        is io.todu.sview.data.ProjectLogTarget.Failure -> value.code
         is SecurityException -> "PERMISSION_DENIED"
         is TimeoutException, is java.net.SocketTimeoutException -> "TIMEOUT"
         is java.util.concurrent.CancellationException, is InterruptedException -> "CANCELLED"

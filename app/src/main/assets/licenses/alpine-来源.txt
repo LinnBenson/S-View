@@ -1,0 +1,8 @@
+Alpine.js 浏览器脚本
+版本：3.17.5
+来源：https://registry.npmjs.org/alpinejs/-/alpinejs-3.17.5.tgz 中的 package/dist/cdn.min.js
+项目：https://github.com/alpinejs/alpine
+许可证：MIT，完整内容见 alpine-MIT.txt。
+发行文件包含 @vue/shared 和 @vue/reactivity 3.5.41，许可见 alpine-vue-MIT.txt。
+文件保持官方压缩内容及版权声明，未修改；下载包已按 npm 元数据的 SHA-512 完整性值校验。
+SHA-256：b4036e9e9ac22fa6f6ae1ba292e015e1f3e9c85d0d79e73e4c8eb9bb139b522e

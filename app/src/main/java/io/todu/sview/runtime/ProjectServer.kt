@@ -12,7 +12,6 @@ import java.net.InetSocketAddress
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.URLConnection
 import java.net.URLDecoder
 import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
@@ -24,7 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ProjectServer(private val repository: ProjectRepository, private val project: Project, private val onLog: (String) -> Unit = {},
     private val onApi: (JSONObject) -> JSONObject,
     private val onApiSent: (JSONObject, JSONObject) -> Unit = { _, _ -> },
-    port: Int = 0, private val share: io.todu.sview.share.SharedPayload? = null) : Closeable {
+    port: Int = 0, private val share: io.todu.sview.share.SharedPayload? = null,
+    private val onServerRequest: ((Socket, BufferedInputStream, String, Int, () -> Unit) -> Unit)? = null) : Closeable {
     private val logLock = Any()
     private val token = UUID.randomUUID().toString()
     private val server = ServerSocket().apply {
@@ -85,16 +85,19 @@ class ProjectServer(private val repository: ProjectRepository, private val proje
                 DeviceImageResource.serve(repository, project.id, socket, target, request[0], headers)
                 return false
             }
-            if (target.startsWith("/__sview_network/") || target.startsWith("/__sview_storage/")) {
+            if (target.startsWith("/__sview_network/") || target.startsWith("/__sview_storage/") || target.startsWith("/__sview_server/")) {
                 if (request[0] != "POST" || headers["origin"] != "http://127.0.0.1:${server.localPort}" || headers["x-sview-request"] != "1") {
                     respond(socket, 403, "text/plain", byteArrayOf()); return false
                 }
                 synchronized(logLock) {
                     if (!running.get()) return false
                     val done = { runCatching { socket.close() }; sockets.remove(socket); Unit }
-                    val length = headers["content-length"]?.toIntOrNull() ?: 0
+                    val length = headers["content-length"]?.toIntOrNull() ?: -1
                     if (target.startsWith("/__sview_storage/")) storage.value.dispatch(socket, input, target, length, done)
-                    else network.value.dispatch(socket, input, target, length, done)
+                    else if (target.startsWith("/__sview_server/")) {
+                        if (onServerRequest == null) { respond(socket, 404, "text/plain", byteArrayOf()); return false }
+                        onServerRequest.invoke(socket, input, target, length, done)
+                    } else network.value.dispatch(socket, input, target, length, done)
                 }
                 return true
             }
@@ -166,25 +169,20 @@ class ProjectServer(private val repository: ProjectRepository, private val proje
                 respond(socket, 200, "text/plain", byteArrayOf()); return false
             }
             if (request[0] != "GET" && request[0] != "HEAD") { respond(socket, 405, "text/plain", byteArrayOf()); return false }
-            if (target.substringBefore('?') == "/__sview_network.js") {
-                respond(socket, 200, "text/javascript; charset=utf-8", repository.networkScript(), request[0] == "HEAD")
-                return false
-            }
-            if (target.substringBefore('?') == "/__sview_storage.js") {
-                respond(socket, 200, "text/javascript; charset=utf-8", repository.storageScript(), request[0] == "HEAD")
+            if (target.substringBefore('?') == "/__sview_runtime.js") {
+                val etag = "\"runtime-${io.todu.sview.data.RuntimeDocument.REVISION}-${repository.transferChunkSize}\""
+                val unchanged = headers["if-none-match"] == etag
+                val bytes = if (unchanged) byteArrayOf() else repository.runtimeScript()
+                socket.getOutputStream().apply {
+                    write(header(if (unchanged) 304 else 200, "text/javascript; charset=utf-8", bytes.size.toLong(), "ETag: $etag\r\n").toByteArray())
+                    if (!unchanged && request[0] != "HEAD") write(bytes)
+                }
                 return false
             }
             val path = URLDecoder.decode(target.substringBefore('?'), "UTF-8")
             val file = repository.runtimeFile(project.id, path)
             if (!file.isFile) { respond(socket, 404, "text/plain", "文件不存在".toByteArray()); return false }
-            val mime = when (file.extension.lowercase()) {
-                "js", "mjs" -> "text/javascript; charset=utf-8"
-                "css" -> "text/css; charset=utf-8"
-                "html", "htm" -> "text/html; charset=utf-8"
-                "svg" -> "image/svg+xml"
-                "json" -> "application/json; charset=utf-8"
-                else -> URLConnection.guessContentTypeFromName(file.name) ?: "application/octet-stream"
-            }
+            val mime = WebMime.of(file)
             // 入口和主脚本直接读取保存时生成的文件，不在请求路径拼装内容。
             if (mime.startsWith("text/html") && path.removePrefix("/") != "index.html" && file.length() <= 4 * 1024 * 1024) {
                 val content = RuntimeDocument.render(project, file.readText(), entry = false)
@@ -224,10 +222,10 @@ class ProjectServer(private val repository: ProjectRepository, private val proje
 
 
     private fun apiExecutor(method: String): ThreadPoolExecutor = when (method) {
-        "interaction.close", "interaction.closeThis", "network.hotspot.close", "network.localServer.close",
+        "interaction.close", "interaction.closeThis", "network.hotspot.close", "network.localServer.close", "network.server.close",
         "system.nfc.close", "system.cancelVibration" -> controlWorkers
         "system.getLocation", "system.scanWifi", "system.scanBluetooth", "system.getHealthInfo", "system.install",
-        "network.hotspot", "interaction.preview", "resource.openDevice" -> slowApiWorkers
+        "network.hotspot", "interaction.preview", "resource.openDevice", "script.log" -> slowApiWorkers
         else -> apiWorkers
     }
 

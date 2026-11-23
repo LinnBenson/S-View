@@ -31,11 +31,13 @@ class WidgetConfigActivity : ComponentActivity() {
         setResult(RESULT_CANCELED)
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID || AppWidgetManager.getInstance(this).getAppWidgetInfo(id)?.provider?.className != ProjectWidget::class.java.name) { finish(); return }
-        WidgetGridSizing.capture(this, id)
+        val initialGrid = WidgetGridSizing.current(this, id)
         enableEdgeToEdge()
         val model = WorkspaceOwner.model(application)
         setContent { SViewTheme {
             var selected by rememberSaveable { mutableStateOf(ArrayList(WidgetStore.read(this, id))) }
+            var gridColumns by rememberSaveable { mutableIntStateOf(initialGrid.first) }
+            var gridRows by rememberSaveable { mutableIntStateOf(initialGrid.second) }
             var choosing by rememberSaveable { mutableStateOf<Int?>(null) }
             var saving by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
@@ -47,7 +49,11 @@ class WidgetConfigActivity : ComponentActivity() {
                             saving = true
                             scope.launch {
                                 try {
-                                    withContext(Dispatchers.IO) { WidgetStore.save(this@WidgetConfigActivity, id, selected); ProjectWidget.update(this@WidgetConfigActivity, intArrayOf(id)) }
+                                    withContext(Dispatchers.IO) {
+                                        WidgetGridSizing.calibrate(this@WidgetConfigActivity, id, gridColumns, gridRows)
+                                        WidgetStore.save(this@WidgetConfigActivity, id, selected)
+                                        ProjectWidget.update(this@WidgetConfigActivity, intArrayOf(id))
+                                    }
                                     setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id))
                                     finish()
                                 } catch (error: Exception) {
@@ -60,6 +66,9 @@ class WidgetConfigActivity : ComponentActivity() {
                 }
                 Text("按顺序显示，数量随小部件大小调整", color = Muted, modifier = Modifier.padding(20.dp))
                 LazyColumn(Modifier.weight(1f).widthIn(max = 600.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(horizontal = 20.dp)) {
+                    item {
+                        WidgetGridCalibration(gridColumns, gridRows, !saving, { gridColumns = it }, { gridRows = it })
+                    }
                     items(WidgetStore.SLOTS) { index ->
                         val project = model.projects.find { it.id == selected[index] }
                         Row(Modifier.fillMaxWidth().clickable { choosing = index }.padding(vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

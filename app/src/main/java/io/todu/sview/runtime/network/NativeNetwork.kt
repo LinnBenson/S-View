@@ -14,13 +14,14 @@ import java.io.Closeable
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /** 原生 HTTP 客户端，不依赖网页跨域策略；每个窗口独立持有任务和连接池。 */
 class NativeNetwork(private val repository: ProjectRepository, private val projectId: String) : Closeable {
     private val tasks = ConcurrentHashMap<String, NetworkTask>()
-    private val workers = Executors.newFixedThreadPool(4)
+    private val workers = ThreadPoolExecutor(4, 4, 30, TimeUnit.SECONDS, LinkedBlockingQueue()).apply { allowCoreThreadTimeOut(true) }
     private val deadlines = java.util.concurrent.ScheduledThreadPoolExecutor(1).apply { removeOnCancelPolicy = true }
     private val cookieStore = lazy { ProjectCookieJar(repository.networkCookies(projectId)) }
     private val cookies get() = cookieStore.value
@@ -124,6 +125,12 @@ class NativeNetwork(private val repository: ProjectRepository, private val proje
     /** 返回一块数据及当前统计，响应成功写回后才确认消费。 */
     fun read(id: String, send: (ByteArray, Long, Long, Boolean, Boolean) -> Unit) {
         val task = task(id)
+        if (task.downloadingFile) {
+            val progress = task.progress.take()
+            send(byteArrayOf(), progress.loaded, task.total, progress.ended, true)
+            if (progress.ended) { tasks.remove(id); task.timer?.cancel(false) }
+            return
+        }
         val block = task.download.take()
         send(block?.bytes ?: ByteArray(0), task.received, task.total, block == null, task.destination != null)
         if (block != null) task.download.consumed(block) else {

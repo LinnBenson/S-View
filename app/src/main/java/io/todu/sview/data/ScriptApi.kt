@@ -16,8 +16,11 @@ object ScriptApi {
             if (!result.ok) throw Object.assign(new Error(result.error), { code: result.code || 'INTERNAL_ERROR' });
             return result.value;
         }
+        ${ScriptErrorHandling.SCRIPT}
+        ${ScriptLogApi.SCRIPT}
         ${ScriptMonitor.SCRIPT}
         ${ScriptNfc.SCRIPT}
+        ${ScriptCustomServer.SCRIPT}
         ${ScriptLocalServers.SCRIPT}
         ${ScriptDeviceResources.SCRIPT}
         ${ScriptShare.SCRIPT}
@@ -50,21 +53,10 @@ object ScriptApi {
                 getBatteryInfo() { return call('system.getBatteryInfo', {}); }
             },
             network: {
+                server: options => startLocalServer('server', options),
                 chatServer: options => startLocalServer('chatServer', options),
                 uploadServer: options => startLocalServer('uploadServer', options),
-                async hotspot() {
-                    const value = await call('network.hotspot', {});
-                    let closing;
-                    return Object.freeze({
-                        name: value.name,
-                        password: value.password,
-                        close() {
-                            if (!closing) closing = call('network.hotspot.close', { id: value.id })
-                                .then(() => undefined).catch(error => { closing = undefined; throw error; });
-                            return closing;
-                        }
-                    });
-                }
+                hotspot: options => startLocalServer('hotspot', options)
             }, storage: {},
             interaction: {
                 monitor,
@@ -77,7 +69,7 @@ object ScriptApi {
                 async removeClose() { await call('interaction.removeClose', {}); },
                 async resize(width, height, persist = false) { await call('interaction.resize', { width, height, persist }); }
             },
-            script: { getShare: getSharedContent, db: ${ScriptDatabaseApi.SCRIPT} }, tools: {}
+            script: { log: readProjectLog, getShare: getSharedContent, db: ${ScriptDatabaseApi.SCRIPT} }, tools: {}
         };
         Object.defineProperty(globalThis, 'sview', { value: sview, writable: false });
     })();"""

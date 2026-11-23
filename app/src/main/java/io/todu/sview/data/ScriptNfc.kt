@@ -26,13 +26,16 @@ object ScriptNfc {
             let closed = false, started = false, requested = false, source;
             const pending = [];
             function invoke(name, value) {
-                try {
-                    const result = handlers[name]?.(value);
-                    if (result && typeof result.then === 'function') Promise.resolve(result).catch(error => console.error('nfc ' + name + ':', error));
-                } catch (error) { console.error('nfc ' + name + ':', error); }
+                const callback = handlers[name];
+                if (!callback) {
+                    if (name === 'onError') reportInterfaceError(value, 'system.nfc', 'interface');
+                    return;
+                }
+                if (name === 'onError') markInterfaceErrorHandled(value);
+                invokeInterfaceCallback(callback, [value], 'system.nfc.' + name, false, name === 'onClose');
             }
             function stopNative() {
-                return callNfc('system.nfc.close', { id }).catch(error => console.error('nfc close:', error));
+                return callNfc('system.nfc.close', { id }).catch(error => invoke('onError', error));
             }
             function finish(reason) {
                 if (closed) return;
@@ -101,7 +104,7 @@ object ScriptNfc {
                     started = true;
                     invoke('onStart');
                     for (const event of pending.splice(0)) deliver(event);
-                } catch (error) { fail('START_FAILED', error.message || '无法启动 NFC'); }
+                } catch (error) { fail(error.code || 'START_FAILED', error.message || '无法启动 NFC'); }
             })();
             return handle;
         }

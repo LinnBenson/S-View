@@ -29,7 +29,7 @@ internal val interactionInterfaceHelp = listOf(
         parameters = listOf(
             InterfaceParameter("options", "object", true, "事件回调对象。以下七项均可省略；再次调用会替换整组回调。"),
             InterfaceParameter("options.onReady", "() => void", false, "页面 load 完成且窗口首帧就绪后触发一次，不等待业务中的异步请求。就绪后再注册，会异步补发一次。"),
-            InterfaceParameter("options.onError", "(error) => void", false, "接收注册后的未捕获 JavaScript 异常、未处理的 Promise 拒绝和资源或页面加载错误。error 包含 type、message，可包含 filename、line、column、stack；行列从 1 开始，未知为 0。console.error 打印本身不会触发此事件。"),
+            InterfaceParameter("options.onError", "(error) => void", false, "接收注册后的未捕获 JavaScript 异常、未处理的 Promise 拒绝和资源或页面加载错误。error 包含 type、message，可包含 code、source、filename、line、column、stack；行列从 1 开始，未知为 0。接口专用 onError 或 catch 已处理的原始错误不再转发。console.error 打印本身不会触发此事件。"),
             InterfaceParameter("options.onClose", "() => void", false, "正常关闭窗口前触发一次，可同步保存 localStorage 或打印日志。关闭按钮、遮罩点击、返回关闭、interaction.close 和 interaction.closeThis 均会触发；回调不能阻止关闭，也不会等待异步任务。系统强杀、崩溃或页面尚未建立监听连接时不能保证执行。"),
             InterfaceParameter("options.onCornerRadius", "({ cornerRadius }) => void", false, "圆角配置实际改变时触发，cornerRadius 为非负 number，单位 dp。相同值不重复通知，注册时不补发；显示圆角最多为窗口短边的一半。"),
             InterfaceParameter("options.onMargin", "({ top, right, bottom, left }) => void", false, "边距配置实际改变时触发，四边均为保留单位的字符串，如 12dp、24px、5%。相同边距不重复通知，注册时不补发；超出屏幕时实际显示边距可能缩小。"),
@@ -37,8 +37,8 @@ internal val interactionInterfaceHelp = listOf(
             InterfaceParameter("options.onResize", "({ width, height }) => void", false, "页面就绪后的实际内容区域尺寸变化时触发，宽高为 CSS 像素 number。同一帧内合并变化，相同尺寸不重复通知；注册时不会立即触发。")
         ),
         resultType = "void",
-        result = "同步注册，无返回值。onReady、onClose 无参数；onResize 接收宽高对象；onLocation 接收位置对象；onMargin 接收四边距对象；onCornerRadius 接收圆角对象；onError 的 type 为 error、unhandledrejection、resource 或 load。",
-        failure = "参数不是对象、事件名不支持或回调不是函数时同步抛出异常。回调内部异常会写入日志，不递归触发 onError。",
+        result = "同步注册，无返回值。onReady、onClose 无参数；onResize 接收宽高对象；onLocation 接收位置对象；onMargin 接收四边距对象；onCornerRadius 接收圆角对象；onError 的 type 为 error、unhandledrejection、resource、load、connection、interface 或 callback。",
+        failure = "参数不是对象、事件名不支持或回调不是函数时同步抛出异常。其他回调内部未捕获异常会转给 onError；onError 自身异常只写日志，不递归调用。",
         example = """sview.interaction.monitor({
   onReady() {
     console.log('窗口已就绪');

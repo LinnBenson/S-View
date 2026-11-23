@@ -252,6 +252,7 @@ class ProjectRepository(private val context: Context) {
     /** 清理派生缓存及项目资源根目录的 cache，下次运行按需重新生成。 */
     fun clearRuntimeCaches() {
         io.todu.sview.runtime.api.LocalServerApiBridge.clearCaches(context)
+        io.todu.sview.runtime.api.CustomServerApiBridge.clearCaches(context)
         runtimeReadiness.invalidate()
         knownProjects.forEach { clearProjectCaches(it.id) }
         temporaryFiles.cleanup()
@@ -293,13 +294,17 @@ class ProjectRepository(private val context: Context) {
 
     /** 原生 Cookie 属于项目缓存，删除项目时随项目目录一起移除。 */
     val transferChunkSize: Int get() = if (io.todu.sview.wear.WatchDevice.isWatch(context)) 262144 else 65536
-    private fun runtimeScript(name: String): ByteArray = context.assets.open("runtime/$name.js").bufferedReader().use {
-        it.readText().replace("__SVIEW_TRANSFER_CHUNK__", transferChunkSize.toString()).toByteArray()
+    private fun runtimeScript(name: String): String = context.assets.open("runtime/$name.js").bufferedReader().use {
+        it.readText().replace("__SVIEW_TRANSFER_CHUNK__", transferChunkSize.toString())
     }
-    private val networkScript by lazy { runtimeScript("network") }
-    fun networkScript() = networkScript
-    private val storageScript by lazy { runtimeScript("storage") }
-    fun storageScript() = storageScript
+    private val runtimeScript by lazy {
+        buildString {
+            append(RuntimeDocument.bootstrap()).append('\n')
+            append(runtimeScript("network")).append('\n')
+            append(runtimeScript("storage"))
+        }.toByteArray()
+    }
+    fun runtimeScript() = runtimeScript
 
     fun networkCookies(id: String) = File(root(id).parentFile, "network/cookies.json")
 

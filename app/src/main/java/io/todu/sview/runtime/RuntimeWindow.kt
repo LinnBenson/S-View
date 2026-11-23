@@ -96,7 +96,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
         }
     }
     val systemApi = remember(project.id) {
-        RuntimeApiBridge(context, project,
+        RuntimeApiBridge(context, project, repository,
             nfcEvent = { server?.events?.nfcEvent(it) },
             localServerEvent = { server?.events?.localServerEvent(it) },
             exitApplication = { RuntimeAppExit.request(context.applicationContext) },
@@ -184,14 +184,15 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
             var created: ProjectServer? = null
             try {
                 withContext(Dispatchers.IO) {
+                    BrowserEngine.prepareStorage(context)
                     created = RuntimeOrigin.open(context) { port ->
-                        ProjectServer(repository, project, onLog, systemApi::invoke, systemApi::responseSent, port, share)
+                        ProjectServer(repository, project, onLog, systemApi::invoke, systemApi::responseSent, port, share, systemApi::serverRequest)
                     }
                 }
                 server = created
                 if (!BrowserEngine.initialized) androidx.compose.runtime.withFrameNanos { }
                 if (closing) { created?.close(); return@LaunchedEffect }
-                val opened = BrowserEngine.openSession(context, project.id)
+                val opened = BrowserEngine.openSession(context, project.id, overlay = overlay != null)
                 session = opened
                 opened.apply {
                     progressDelegate = object : GeckoSession.ProgressDelegate {

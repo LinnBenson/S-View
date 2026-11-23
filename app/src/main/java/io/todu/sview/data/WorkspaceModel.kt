@@ -139,6 +139,14 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
     fun appendLog(project: Project, message: String) { logWriter.append(project.id, message) }
     fun flushLogWrites() = task { logWriter.flush() }
 
+    /** 由主线程进入，沿用修改锁与 IO 队列，避免项目删除或同步切换时读错目录。 */
+    suspend fun readProjectLog(currentId: String, name: String?): String = mutationLock.withLock {
+        check(!watchSyncBusy && !clearingCache && !appExiting) { "请等待当前操作完成" }
+        val id = ProjectLogTarget.resolve(projects, currentId, name)
+        logWriter.flush()
+        io { logStore.readAll(id) }
+    }
+
     fun refreshLogSizes() = task {
         logWriter.flush()
         val ids = projects.map { it.id }

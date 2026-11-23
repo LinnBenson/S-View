@@ -6,11 +6,17 @@ internal val networkInterfaceHelp = listOf(
         name = "sview.network.hotspot",
         brief = "启动本地 Wi-Fi 热点",
         summary = "创建只用于设备间局域网通信的热点，不共享移动网络。必须在运行窗口前台启动，名称和密码由系统生成。",
-        parameters = listOf(),
+        parameters = listOf(
+            InterfaceParameter("options.onError", "function", false, "启动或运行失败时接收 { message }。启动失败同时拒绝 Promise。"),
+            InterfaceParameter("options.onClose", "function", false, "主动释放或系统停止热点时调用 onClose()，每次预约只触发一次。启动失败不触发。")
+        ),
         resultType = "Promise<object>",
         result = "启动成功后返回 { name, password, close }。name 和 password 为只读字符串，开放热点的 password 为空字符串。await close() 释放本项目的热点预约，可重复调用；旧对象不会关闭后来创建的热点。项目关闭、应用退出或进程结束时自动释放，无须脚本手动调用。切到后台不等同于关闭项目，但系统仍可能停止热点。",
         failure = "设备不支持、权限未允许、系统网络模式冲突、已有项目占用、启动超过 30 秒或项目提前关闭时 Promise 拒绝。Android 13 及以上需允许附近 Wi-Fi 设备，旧版本需精确位置权限并开启位置服务。",
-        example = """const hotspot = await sview.network.hotspot();
+        example = """const hotspot = await sview.network.hotspot({
+  onError(error) { console.error(error.message); },
+  onClose() { console.log('热点已关闭'); }
+});
 console.log(hotspot.name, hotspot.password);
 // 通信结束后可提前释放；项目关闭时也会自动释放。
 await hotspot.close();""",
@@ -148,7 +154,7 @@ try {
 }""",
         category = "网络"
     )
-).plus(localServerInterfaceHelp).let { entries ->
+).plus(customServerInterfaceHelp).plus(localServerInterfaceHelp).let { entries ->
     // 按完整名称归属链式方法，独立接口的位置变化不能改变 request 的分组。
     val request = entries.single { it.name == "sview.network.request" }
     val methods = entries.filter { it.name.startsWith("sview.network.request().") }

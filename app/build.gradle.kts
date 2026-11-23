@@ -13,8 +13,8 @@ android {
         applicationId = "io.todu.sview"
         minSdk = 26
         targetSdk = 36
-        versionCode = 116
-        versionName = "1.2.12"
+        versionCode = 125
+        versionName = "1.3.0"
 
     }
 
@@ -60,6 +60,7 @@ dependencies {
     implementation("org.mozilla.geckoview:geckoview:160.0.20261116130455")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

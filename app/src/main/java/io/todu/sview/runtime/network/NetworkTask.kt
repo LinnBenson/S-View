@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class NetworkTask(val id: String, val uploadLength: Long, val destination: DownloadDestination?, private val staging: File, private val temporaryStore: io.todu.sview.storage.TemporaryFiles, private val chunkSize: Int = 65536) : Closeable {
     val upload = NetworkPipe()
     val download = NetworkPipe()
+    val progress = DownloadProgress()
+    @Volatile var downloadingFile = false; private set
     val metadata = CompletableFuture<JSONObject>()
     val cancelled = AtomicBoolean(false)
     @Volatile var call: Call? = null
@@ -35,6 +37,7 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
         value.headers.names().forEach { headers.put(it.lowercase(), value.headers.values(it).joinToString(", ")) }
         total = value.body?.contentLength() ?: 0
         val target = destination?.takeIf { value.isSuccessful }?.resolve(value)
+        downloadingFile = target != null
         metadata.complete(JSONObject().put("status", value.code).put("headers", headers)
             .put("url", value.request.url.toString()).put("total", total)
             .put("downloadPath", destination?.resultPath))
@@ -57,7 +60,7 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
             }
         }
         result = JSONObject().put("size", received)
-        download.end()
+        if (downloadingFile) progress.publish(received, complete = true) else download.end()
     }
 
     /** 文件直接落盘；流响应每次只向 JS 交付一块，受消费者速度约束。 */
@@ -69,10 +72,11 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
                 if (count < 0) break
                 if (cancelled.get()) throw IOException("请求已取消")
                 received += count
-                if (output == null) download.put(buffer.copyOf(count)) else {
+                // put 返回时网页已消费该块，下一次读取可安全复用完整缓冲区。
+                if (output == null) download.put(if (count == buffer.size) buffer else buffer.copyOf(count)) else {
                     output.write(buffer, 0, count)
-                    // 由读取端确认进度后继续，不轮询，也不积压进度消息。
-                    download.put(ByteArray(0))
+                    // 合并进度不阻塞磁盘写入，网页繁忙不会拖慢下载。
+                    progress.publish(received)
                 }
             }
             if (total >= 0 && received != total) throw IOException("响应长度不完整")
@@ -84,6 +88,7 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
         cancelled.set(true)
         upload.cancel(error)
         download.cancel(error)
+        progress.cancel(error)
         metadata.completeExceptionally(error)
         io.todu.sview.runtime.cleanupResource("HTTP 请求") { call?.cancel() }
         io.todu.sview.runtime.cleanupResource("HTTP 响应") { response?.close() }

@@ -22,6 +22,8 @@ internal fun GeckoView.observeRuntimeTexture(onFrame: () -> Unit) {
 
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
                 delegate.onSurfaceTextureUpdated(surface)
+                // 首帧后恢复引擎监听，不让每一帧继续经过 Compose 状态回调。
+                texture.surfaceTextureListener = delegate
                 onFrame()
             }
         }

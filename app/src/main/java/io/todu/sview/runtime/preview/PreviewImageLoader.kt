@@ -12,11 +12,14 @@ import java.io.File
 internal object PreviewImageLoader {
     private const val MAX_EDGE = 2048
 
-    fun load(file: File): Bitmap {
+    fun load(file: File, watchViewport: Int? = null): Bitmap {
+        // 手表保留最大三倍缩放所需像素；长图按短边计算，不降低局部查看的清晰度。
+        fun ratio(width: Int, height: Int): Double = minOf(1.0, MAX_EDGE.toDouble() / maxOf(width, height),
+            watchViewport?.let { it * 3.0 / minOf(width, height) } ?: Double.POSITIVE_INFINITY)
         require(file.isFile && file.canRead()) { "图片不存在或无法读取" }
         if (Build.VERSION.SDK_INT >= 28) {
             return ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
-                val ratio = minOf(1.0, MAX_EDGE.toDouble() / maxOf(info.size.width, info.size.height))
+                val ratio = ratio(info.size.width, info.size.height)
                 decoder.setTargetSize(maxOf(1, (info.size.width * ratio).toInt()), maxOf(1, (info.size.height * ratio).toInt()))
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             }
@@ -27,6 +30,8 @@ internal object PreviewImageLoader {
         options.inJustDecodeBounds = false
         options.inSampleSize = 1
         while (maxOf(options.outWidth, options.outHeight) / options.inSampleSize > MAX_EDGE) options.inSampleSize *= 2
+        val targetRatio = ratio(options.outWidth, options.outHeight)
+        while (1.0 / (options.inSampleSize * 2) >= targetRatio) options.inSampleSize *= 2
         val bitmap = BitmapFactory.decodeFile(file.path, options) ?: error("无法解码图片")
         // 旧系统使用 EXIF 还原照片方向；无 EXIF 的格式按原方向显示。
         val orientation = runCatching { ExifInterface(file.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1)

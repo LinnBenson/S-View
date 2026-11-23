@@ -4,19 +4,22 @@ import org.json.JSONObject
 
 /** 保存时生成运行入口；变量和日志桥先于用户引用执行。 */
 object RuntimeDocument {
-    const val REVISION = 24
+    const val REVISION = 27
 
     fun render(project: Project, source: String, entry: Boolean = true): String {
         val variables = JSONObject()
         project.variables.forEach { variables.put(it.name, it.jsonValue()) }
         val data = variables.toString().replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-        val injection = "<script>$CONSOLE_SCRIPT\n${ScriptApi.SCRIPT}</script><script src=\"/__sview_network.js\"></script><script src=\"/__sview_storage.js\"></script>"
+        val injection = "<script src=\"/__sview_runtime.js?v=$REVISION\"></script>"
         val variablesScript = if (project.variables.isEmpty()) "" else "<script>Object.assign(globalThis,$data);</script>"
         val html = if (entry) ReferenceTemplate.render(source, project.references)
             .replace(ReferenceTemplate.VARIABLES_PLACEHOLDER, variablesScript) else source
         val head = Regex("<head(?:\\s[^>]*)?>", RegexOption.IGNORE_CASE).find(html)
         return if (head == null) injection + html else html.substring(0, head.range.last + 1) + injection + html.substring(head.range.last + 1)
     }
+
+    /** 公共桥接脚本只生成一份，页面仍同步加载，保证用户脚本执行前接口就绪。 */
+    fun bootstrap() = "$CONSOLE_SCRIPT\n${ScriptApi.SCRIPT}"
 
     private const val CONSOLE_SCRIPT = """(() => {
             let queue = [], queuedCharacters = 0, timer, pending;
@@ -56,7 +59,15 @@ object RuntimeDocument {
             }
             for (const level of ['log', 'debug', 'info', 'warn', 'error']) {
                 const original = console[level].bind(console);
-                console[level] = (...args) => { original(...args); send(level + ': ' + args.map(format).join(' ')); };
+                console[level] = (...args) => {
+                    original(...args);
+                    let line = level + ': ';
+                    for (let i = 0; i < args.length && line.length < 16000; i++) {
+                        if (i) line += ' ';
+                        line += String(format(args[i]) ?? '').slice(0, 16000 - line.length);
+                    }
+                    send(line);
+                };
             }
             addEventListener('error', event => {
                 if (event.error) send('error: ' + format(event.error));

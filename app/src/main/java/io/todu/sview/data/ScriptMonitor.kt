@@ -11,13 +11,10 @@ object ScriptMonitor {
         function invokeMonitor(name, value) {
             const callback = callbacks[name];
             if (!callback) return;
-            try {
-                const result = (name === 'onError' || name === 'onResize' || name === 'onLocation' || name === 'onMargin' || name === 'onCornerRadius') ? callback(value) : callback();
-                if (result && typeof result.then === 'function') {
-                    Promise.resolve(result).catch(error => console.error('monitor ' + name + ':', error));
-                }
-            } catch (error) { console.error('monitor ' + name + ':', error); }
+            const args = ['onError', 'onResize', 'onLocation', 'onMargin', 'onCornerRadius'].includes(name) ? [value] : [];
+            invokeInterfaceCallback(callback, args, 'monitor.' + name, name === 'onError', name === 'onClose');
         }
+
         function notifyReady() {
             if (!nativeReady || !pageReady || ended || readyDelivered || !callbacks.onReady) return;
             const version = monitorVersion;
@@ -27,13 +24,14 @@ object ScriptMonitor {
                 invokeMonitor('onReady');
             });
         }
-        function notifyError(value) {
-            if (!ended) invokeMonitor('onError', value);
+        function notifyError(value, closing = false) {
+            if (!ended || closing) invokeMonitor('onError', value);
         }
         function notifyClose() {
             if (ended) return;
             ended = true;
             closeNfcWindow();
+            for (const record of localServers.values()) cancelCustomServerRequests(record);
             if (resizeFrame) cancelAnimationFrame(resizeFrame);
             if (events) events.close();
             invokeMonitor('onClose');
@@ -147,16 +145,16 @@ object ScriptMonitor {
             if (event.target && event.target !== globalThis && (event.target.src || event.target.href)) {
                 notifyError({ type: 'resource', message: '资源加载失败', filename: event.target.src || event.target.href });
             } else {
-                notifyError({ type: 'error', message: event.message || '脚本运行错误',
-                    filename: event.filename || '', line: event.lineno || 0, column: event.colno || 0,
-                    stack: event.error && event.error.stack || '' });
+                if (interfaceErrorHandled(event.error)) return;
+                const value = describeRuntimeError(event.error ?? event.message, 'error');
+                value.message = event.message || value.message;
+                Object.assign(value, { filename: event.filename || '', line: event.lineno || 0, column: event.colno || 0 });
+                notifyError(value);
             }
         }, true);
         addEventListener('unhandledrejection', event => {
-            const reason = event.reason;
-            let message;
-            try { message = reason && reason.message || String(reason); } catch { message = 'Promise 未处理的拒绝'; }
-            notifyError({ type: 'unhandledrejection', message, stack: reason && reason.stack || '' });
+            if (interfaceErrorHandled(event.reason)) return;
+            notifyError(describeRuntimeError(event.reason, 'unhandledrejection'));
         });
         addEventListener('resize', () => {
             if (ended || !callbacks.onResize || resizeFrame) return;

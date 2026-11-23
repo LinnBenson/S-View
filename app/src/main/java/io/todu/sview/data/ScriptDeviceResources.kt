@@ -26,9 +26,23 @@ object ScriptDeviceResources {
             if (root.querySelectorAll) root.querySelectorAll('img[src]').forEach(map);
         }
         const deviceObserver = new MutationObserver(records => {
+            const roots = new Set();
             for (const record of records) {
-                if (record.type === 'attributes') mapDeviceImages(record.target);
-                else record.addedNodes.forEach(mapDeviceImages);
+                if (record.type === 'attributes') {
+                    // 属性变化只检查当前图片，不重复搜索其子树。
+                    if (record.target instanceof HTMLImageElement) {
+                        const path = record.target.getAttribute('src');
+                        if (path && path.startsWith('device:/')) record.target.setAttribute('src', path);
+                    }
+                } else for (const node of record.addedNodes) {
+                    if (node.nodeType === 1 && node.isConnected) roots.add(node);
+                }
+            }
+            for (const root of roots) {
+                // 父节点已覆盖的新增子树只扫描一次，保留 innerHTML 的图片映射。
+                let parent = root.parentNode;
+                while (parent && !roots.has(parent)) parent = parent.parentNode;
+                if (!parent) mapDeviceImages(root);
             }
         });
         deviceObserver.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] });
@@ -39,7 +53,7 @@ object ScriptDeviceResources {
             const path = anchor && anchor.getAttribute('href');
             if (!path || !path.startsWith('device:/')) return;
             event.preventDefault();
-            call('resource.openDevice', { path }).catch(error => console.error('打开设备文件失败：', error.message));
+            call('resource.openDevice', { path }).catch(error => reportInterfaceError(error, 'resource.openDevice', 'interface'));
         });
         addEventListener('pagehide', () => deviceObserver.disconnect());
         addEventListener('pageshow', event => {

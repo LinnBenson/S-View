@@ -60,7 +60,7 @@ document.querySelector('#count').addEventListener('click', (event) => {
 
 资源按“当前项目优先、全局模板其次”的顺序解析。项目中的同名文件只影响当前项目，不会修改公共模板。
 
-「设置 → 模板文件」用于管理全局模板。内置入口、公共样式和公共脚本，以及 jQuery、Lucide 库，可供项目引用。系统模板允许编辑，但不能删除；更新应用不会覆盖已有模板修改。
+「设置 → 模板文件」用于管理全局模板。内置入口、公共样式和公共脚本，以及 jQuery、Lucide、Alpine.js 库，可供项目引用。系统模板允许编辑，但不能删除；更新应用不会覆盖已有模板修改。Alpine.js 可在项目的「引用 → 快速添加」中选择，默认延后加载（defer），无需联网。
 
 入口模板中的两个占位符用于插入项目配置：
 
@@ -96,7 +96,7 @@ document.querySelector('#count').addEventListener('click', (event) => {
 
 ### 手机桌面
 
-在系统小部件列表中添加「项目快捷方式」，选择需要显示的项目。小部件可随桌面调整大小，最多配置 16 个项目位置，具体尺寸和重新配置入口取决于桌面应用。
+在系统小部件列表中添加「项目快捷方式」，选择需要显示的项目。小部件可随桌面调整大小，最多配置 16 个项目位置，具体尺寸和重新配置入口取决于桌面应用。显示数量与桌面占格不符时，在小部件配置页把「当前占格」设为实际列数和行数后保存；例如一行占两格，设置为 2 列、1 行。在另一尺寸下再次校准可进一步修正格间距。更换桌面网格或折叠状态后，可分别校准。
 
 已授予悬浮窗权限时，点击快捷方式直接打开悬浮运行窗口；未授权时，进入 S View 后运行项目。悬浮窗口沿用项目的窗口配置，锁屏、撤销权限或结束应用会停止运行。
 
@@ -159,7 +159,10 @@ await sview.storage.copy(
 
 `sview.network.request(url)` 使用原生网络请求，不受网页 CORS 限制；普通 `fetch`、`XMLHttpRequest` 和 `$.ajax` 仍遵循浏览器规则。HTTPS 请求保留证书校验。
 
-`hotspot()` 创建供局域网设备通信的本地热点，不共享移动网络。`chatServer()` 提供聊天网页，`uploadServer()` 提供文件接收网页。文件和图片上传默认上限均为 512 MB，可调低。
+`hotspot()` 创建供局域网设备通信的本地热点，不共享移动网络。`chatServer()` 提供聊天网页，`uploadServer()` 提供文件接收网页。文件和图片上传默认上限均为 512 MB，可调低。三个接口均可在配置对象中传入 `onError(error)` 和 `onClose()`，分别处理错误和关闭通知。
+
+`server({ home, onRequest, ... })` 可创建自定义 HTTP 服务器。`home` 支持项目路径或 `device:/Download/home.html` 等设备路径，设备路径需要允许设备存储访问。`/` 返回指定 HTML，其他路径优先返回项目文件，找不到文件时交给 `onRequest(request)`，通过标准 `Response` 返回文字、JSON 或 HTML。设备首页的同目录资源不会自动公开。支持 `onError`、`onClose`，默认端口 8080、超时 30 秒、正文上限 16 MiB、并发连接数 4。静态文件只接受 GET/HEAD；动态响应完整接收后发送，不支持 WebSocket、HTTPS 或持续推送。项目文件可通过对应路径访问，不应在其中存放私密资料。
+
 
 上传服务将完成的文件保存到设备 `Download`，同名文件自动改名。聊天附件只保留在会话缓存中，关闭服务后清理。项目关闭或应用退出时会释放相关服务；已经保存到 `Download` 的文件不会随服务关闭而删除。
 
@@ -248,6 +251,7 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 | GeckoView | Mozilla Public License 2.0 |
 | Lucide | ISC |
 | jQuery | MIT |
+| Alpine.js 及其 Vue 响应式模块 | MIT |
 | JetBrains Mono | SIL Open Font License |
 | OkHttp、Okio、Prism4j | Apache License 2.0 |
 

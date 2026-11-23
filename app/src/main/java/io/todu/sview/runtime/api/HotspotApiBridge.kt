@@ -11,22 +11,22 @@ import android.os.Looper
 import androidx.core.location.LocationManagerCompat
 import org.json.JSONObject
 import java.io.Closeable
-import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 /** 每个运行窗口持有自己的热点预约；系统只允许同一应用存在一个申请。 */
-internal class HotspotApiBridge(context: Context, private val foreground: () -> Boolean) : Closeable {
+internal class HotspotApiBridge(context: Context, private val foreground: () -> Boolean, private val event: (JSONObject) -> Unit) : Closeable {
     private val context = context.applicationContext
     private val main = MainThreadCalls()
     private val handler = Handler(Looper.getMainLooper())
     private var active: Request? = null
     @Volatile private var closed = false
 
-    private class Request {
-        val id = UUID.randomUUID().toString()
+    private class Request(val id: String) {
+        var finished = false
+        var started = false
         val result = CompletableFuture<JSONObject>()
         var reservation: WifiManager.LocalOnlyHotspotReservation? = null
         var cancelled = false
@@ -34,7 +34,7 @@ internal class HotspotApiBridge(context: Context, private val foreground: () -> 
 
     fun invoke(json: JSONObject): JSONObject = try {
         val value = when (json.getString("method")) {
-            "network.hotspot" -> start()
+            "network.hotspot" -> start(json.getJSONObject("args").getString("id"))
             "network.hotspot.close" -> main.invoke {
                 val id = json.getJSONObject("args").getString("id")
                 // 旧对象再次 close 不得关闭后来创建的新热点。
@@ -48,14 +48,15 @@ internal class HotspotApiBridge(context: Context, private val foreground: () -> 
         ApiErrors.failure(error)
     }
 
-    private fun start(): JSONObject {
+    private fun start(id: String): JSONObject {
+        require(id.matches(Regex("[a-zA-Z0-9-]{1,64}"))) { "服务标识无效" }
         val request = main.invoke {
             check(!closed) { "运行窗口已关闭" }
             if (!foreground()) throw io.todu.sview.runtime.api.ApiException("NOT_FOREGROUND", "请在运行窗口位于前台时启动热点")
             requirePermissions()
             check(owner == null) { "已有项目正在启动、使用或关闭热点" }
             val wifi = context.getSystemService(WifiManager::class.java) ?: error("设备不支持 Wi-Fi 热点")
-            val next = Request()
+            val next = Request(id)
             active = next
             owner = next
             try { wifi.startLocalOnlyHotspot(callback(next), handler) }
@@ -87,6 +88,7 @@ internal class HotspotApiBridge(context: Context, private val foreground: () -> 
             try {
                 val (name, password) = credentials(reservation)
                 check(name.isNotBlank()) { "系统未返回热点名称" }
+                request.started = true
                 request.result.complete(JSONObject().put("id", request.id).put("name", name).put("password", password))
             } catch (error: Exception) {
                 request.result.completeExceptionally(error)
@@ -103,6 +105,10 @@ internal class HotspotApiBridge(context: Context, private val foreground: () -> 
                 ERROR_INCOMPATIBLE_MODE -> "当前 Wi-Fi 或网络共享模式不允许启动本地热点"
                 ERROR_TETHERING_DISALLOWED -> "系统不允许启动热点"
                 else -> "设备无法启动本地热点"
+            }
+            if (request.started && !request.finished) {
+                event(JSONObject().put("id", request.id).put("kind", "error")
+                    .put("value", JSONObject().put("message", message)))
             }
             request.result.completeExceptionally(IllegalStateException(message))
             finish(request)
@@ -139,7 +145,11 @@ internal class HotspotApiBridge(context: Context, private val foreground: () -> 
         try { reservation.close() } finally { finish(request) }
     }
 
+    /** 系统回调和主动关闭可能先后到达，只报告一次预约结束。 */
     private fun finish(request: Request) {
+        if (request.finished) return
+        request.finished = true
+        if (request.started) event(JSONObject().put("id", request.id).put("kind", "closed"))
         request.reservation = null
         if (active === request) active = null
         if (owner === request) owner = null

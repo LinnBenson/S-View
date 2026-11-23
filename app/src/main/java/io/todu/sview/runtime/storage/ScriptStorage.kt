@@ -151,7 +151,7 @@ internal class ScriptStorage(
         try {
             val buffer = ByteArray(readChunkSize)
             val count = input.read(buffer)
-            if (count < 0) { cancel(id); byteArrayOf() } else buffer.copyOf(count)
+            if (count < 0) { cancel(id); byteArrayOf() } else if (count == buffer.size) buffer else buffer.copyOf(count)
         } catch (error: Exception) { cancel(id); throw error }
     }
 

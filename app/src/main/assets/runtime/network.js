@@ -4,7 +4,7 @@
     const invalidArgument = message => Object.assign(new TypeError(message), { code: 'INVALID_ARGUMENT' });
     const CHUNK = __SVIEW_TRANSFER_CHUNK__;
     const active = new Set();
-    const waiting = [];
+    const waiting = new Set();
     let transmitting = 0;
     // 自动排队而不是拒绝正常的并发调用，限制同时传输以控制手表端占用。
     function acquire(signal) {
@@ -18,18 +18,18 @@
                         if (released) return;
                         released = true;
                         transmitting--;
-                        waiting.shift()?.start();
+                        const next = waiting.values().next().value;
+                        if (next) { waiting.delete(next); next.start(); }
                     });
                 }
             };
             function abort() {
-                const index = waiting.indexOf(item);
-                if (index >= 0) waiting.splice(index, 1);
+                waiting.delete(item);
                 reject(error('请求已取消', 'CANCELLED'));
             }
             if (signal.aborted) { abort(); return; }
             if (transmitting < 4) item.start();
-            else { waiting.push(item); signal.addEventListener('abort', abort, { once: true }); }
+            else { waiting.add(item); signal.addEventListener('abort', abort, { once: true }); }
         });
     }
     const encoder = new TextEncoder();
@@ -102,6 +102,10 @@
                 try { Promise.resolve(reader.cancel()).catch(() => {}); } catch (_) { }
             }
             readers.clear();
+            // 已结束的构建器仍可能被脚本保存，释放它不再需要的上传数据与回调。
+            body = undefined;
+            files.length = 0;
+            uploadCallback = downloadCallback = undefined;
             if (id) await bridge(id + '/cancel', undefined, undefined, true).catch(() => {});
             releaseSlot?.();
             releaseSlot = undefined;
@@ -129,13 +133,39 @@
         async function* valueChunks(value) {
             if (value instanceof Blob) { yield* streamChunks(value.stream()); return; }
             if (value instanceof ReadableStream) { yield* streamChunks(value); return; }
-            const data = typeof value === 'string' ? encoder.encode(value) : bytes(value);
+            if (typeof value === 'string') {
+                // 分段编码并复用缓冲区，encodeInto 不会拆开 UTF-16 代理对。
+                const buffer = new Uint8Array(CHUNK);
+                let offset = 0;
+                while (offset < value.length) {
+                    let end = Math.min(value.length, offset + CHUNK);
+                    const last = value.charCodeAt(end - 1);
+                    if (end < value.length && last >= 0xD800 && last <= 0xDBFF) end++;
+                    const { read, written } = encoder.encodeInto(value.slice(offset, end), buffer);
+                    offset += read;
+                    yield buffer.subarray(0, written);
+                }
+                return;
+            }
+            const data = bytes(value);
             for (let offset = 0; offset < data.byteLength; offset += CHUNK) yield data.subarray(offset, offset + CHUNK);
+        }
+        /** 计算 UTF-8 长度不创建整份编码副本，孤立代理字符与 TextEncoder 一样按替换字符计数。 */
+        function utf8Size(value) {
+            let size = 0;
+            for (let i = 0; i < value.length; i++) {
+                const c = value.charCodeAt(i);
+                if (c < 0x80) size++;
+                else if (c < 0x800) size += 2;
+                else if (c >= 0xD800 && c <= 0xDBFF && value.charCodeAt(i + 1) >= 0xDC00 && value.charCodeAt(i + 1) <= 0xDFFF) { size += 4; i++; }
+                else size += 3;
+            }
+            return size;
         }
         function sizeOf(value) {
             if (value instanceof Blob) return value.size;
             if (value instanceof ReadableStream) return -1;
-            return typeof value === 'string' ? encoder.encode(value).byteLength : bytes(value).byteLength;
+            return typeof value === 'string' ? utf8Size(value) : bytes(value).byteLength;
         }
         function quoted(value) {
             return String(value).replace(/\r/g, '%0D').replace(/\n/g, '%0A').replace(/"/g, '%22');
@@ -276,12 +306,22 @@
                 else if (responseType === 'arrayBuffer' && successful) result.data = await content.arrayBuffer();
                 else {
                     const text = await content.text();
-                    let parsed, valid = false;
-                    try { parsed = JSON.parse(text); valid = true; } catch (_) { }
-                    result.isJson = () => valid;
-                    result.data = valid && responseType !== 'text' ? parsed : text;
-                    if (successful && responseType === 'json' && !valid) {
-                        throw Object.assign(error('响应不是合法 JSON', 'INVALID_JSON'), { response: result, status: result.status });
+                    if (responseType === 'text') {
+                        // 显式文本不提前创建整棵 JSON；需要判断时再解析，结果仍与旧接口相同。
+                        let valid;
+                        result.isJson = () => {
+                            if (valid === undefined) { try { JSON.parse(text); valid = true; } catch (_) { valid = false; } }
+                            return valid;
+                        };
+                        result.data = text;
+                    } else {
+                        let parsed, valid = false;
+                        try { parsed = JSON.parse(text); valid = true; } catch (_) { }
+                        result.isJson = () => valid;
+                        result.data = valid ? parsed : text;
+                        if (successful && responseType === 'json' && !valid) {
+                            throw Object.assign(error('响应不是合法 JSON', 'INVALID_JSON'), { response: result, status: result.status });
+                        }
                     }
                 }
                 if (!successful) throw Object.assign(error('HTTP ' + metadata.status, 'HTTP_ERROR'), { status: metadata.status, response: result });
