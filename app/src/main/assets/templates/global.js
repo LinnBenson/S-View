@@ -253,3 +253,16 @@ function scrollBottom( selector ) {
         });
     });
 }
+/**
+ * 滚动元素到顶部
+ * @param {string} selector 选择器
+ */
+function scrollTop( selector ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        const box = element === document.body || element === document.documentElement ? document.scrollingElement : element;
+        box?.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}

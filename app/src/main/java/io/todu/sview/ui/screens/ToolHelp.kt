@@ -245,4 +245,20 @@ scrollBottom('body');""",
         note = "由 global.js 提供，请先在项目引用项中加载。内部容器需设置高度或最大高度，并启用 overflow-y: auto 或 scroll。应在内容更新后调用；图片等稍后加载导致高度变化时，需要再次调用。",
         category = "工具",
     ),
+    InterfaceHelpEntry(
+        name = "scrollTop",
+        brief = "滚动元素到顶部",
+        summary = "让所有匹配的滚动容器平滑滚动到顶部。选中 body 或 html 时，改为滚动整个页面的实际滚动元素。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器，例如 #messages、.scroll、[box] 或 body。")
+        ),
+        resultType = "void",
+        result = "返回 undefined；发起滚动后立即返回，不等待滚动动画结束。",
+        failure = "选择器语法无效时抛出异常；没有匹配元素或没有可滚动距离时，不会产生滚动。",
+        example = """scrollTop('#messages');
+// 滚动整个页面。
+scrollTop('body');""",
+        note = "由 global.js 提供，请先在项目引用项中加载。内部容器需设置高度或最大高度，并启用 overflow-y: auto 或 scroll。应在目标元素创建后调用。",
+        category = "工具",
+    ),
 )
