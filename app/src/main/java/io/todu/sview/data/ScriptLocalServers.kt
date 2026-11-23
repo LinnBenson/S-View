@@ -31,7 +31,7 @@ object ScriptLocalServers {
                 return;
             }
             if (kind === 'error') markInterfaceErrorHandled(value);
-            const args = (kind === 'file' || kind === 'image') ? [value.percent, value.path] : kind === 'closed' ? [] : [value];
+            const args = (kind === 'file' || kind === 'image') ? [value.id, value.percent, value.path] : kind === 'closed' ? [] : [value];
             invokeInterfaceCallback(callback, args, 'network.' + (record.kind || 'server') + '.' + names[kind], false, kind === 'closed');
         }
         async function startLocalServer(kind, options = {}) {

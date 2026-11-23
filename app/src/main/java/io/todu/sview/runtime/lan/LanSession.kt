@@ -183,7 +183,9 @@ internal class LanSession(private val context: Context, val id: String, private 
 
     private fun receive(request: LanHttpTransport.Request, reply: LanHttpTransport.Reply, sender: String) {
         check(upload.tryAcquire()) { "已有文件正在上传，请稍后重试" }
-        val file = File(temporary, UUID.randomUUID().toString() + ".part")
+        // 每次上传生成独立 ID，接收进度和保存结果共用此 ID。
+        val transferId = UUID.randomUUID().toString()
+        val file = File(temporary, "$transferId.part")
         partials.add(file)
         try {
             val image = request.path == "/image"
@@ -192,7 +194,7 @@ internal class LanSession(private val context: Context, val id: String, private 
             require(request.length in 0..(if (image) maxImage else maxFile)) { "文件超过大小限制" }
             if (chat) synchronized(lock) { check(storedBytes + request.length <= 512L * 1048576 && messages.size < 10000) { "聊天缓存已满" } }
             val kind = if (image) "image" else "file"
-            if (!chat) progress(kind, 0, false)
+            if (!chat) progress(kind, transferId, 0, false)
             val started = android.os.SystemClock.elapsedRealtime()
             var last = started
             var received = 0L
@@ -204,7 +206,7 @@ internal class LanSession(private val context: Context, val id: String, private 
                     check(count > 0) { "上传中断" }
                     output.write(buffer, 0, count); received += count
                     val now = android.os.SystemClock.elapsedRealtime()
-                    if (!chat && now - last >= 1000) { progress(kind, minOf(99, (received * 100 / request.length).toInt()), false); last = now }
+                    if (!chat && now - last >= 1000) { progress(kind, transferId, minOf(99, (received * 100 / request.length).toInt()), false); last = now }
                 }
                 output.fd.sync()
             }
@@ -215,7 +217,7 @@ internal class LanSession(private val context: Context, val id: String, private 
                 reply.json(value)
             } else {
                 val saved = saveDownload(file, name)
-                progress(kind, 100, "device:/Download/${saved.name}")
+                progress(kind, transferId, 100, "device:/Download/${saved.name}")
                 reply.json(JSONObject().put("name", saved.name).put("size", saved.length()))
             }
         } catch (error: Exception) {
@@ -227,7 +229,9 @@ internal class LanSession(private val context: Context, val id: String, private 
         }
     }
 
-    private fun progress(kind: String, percent: Int, path: Any) = emit(kind, JSONObject().put("percent", percent).put("path", path))
+    /** 将同一次上传的 ID 连同进度和保存路径传给脚本。 */
+    private fun progress(kind: String, id: String, percent: Int, path: Any) =
+        emit(kind, JSONObject().put("id", id).put("percent", percent).put("path", path))
 
     /** 同目录临时文件完成写入后再改名；多个项目之间也不会覆盖同名文件。 */
     private fun saveDownload(source: File, name: String): File {

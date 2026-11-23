@@ -22,8 +22,8 @@ internal val localServerInterfaceHelp = listOf(true, false).map { chat ->
             InterfaceParameter("options.onError", "function", false, "运行或上传失败时接收 { message }。启动失败也触发此回调，并拒绝 Promise。")
         ) else listOf(
             InterfaceParameter("options.onText", "function", false, "收到文字时调用 onText(text)。"),
-            InterfaceParameter("options.onFile", "function", false, "onFile(percent, path)：接收时 path 为 false；保存成功后为 onFile(100, 'device:/Download/文件名')。"),
-            InterfaceParameter("options.onImage", "function", false, "onImage(percent, path)：与文件回调相同，独立报告图片接收与保存结果。"),
+            InterfaceParameter("options.onFile", "function", false, "onFile(id, percent, path)：id 为本次上传的唯一字符串，同一次上传保持不变，重新上传会生成新 ID；接收时 path 为 false；保存成功后为 onFile(id, 100, 'device:/Download/文件名')。"),
+            InterfaceParameter("options.onImage", "function", false, "onImage(id, percent, path)：与文件回调相同，独立报告图片接收与保存结果。"),
             InterfaceParameter("options.onError", "function", false, "运行或上传失败时接收 { message }；失败不会报告保存成功。启动失败也触发此回调，并拒绝 Promise。")
         ),
         resultType = "Promise<object>",
@@ -46,8 +46,8 @@ console.log(chat.url);
 // 用完后：await chat.close();""" else """const upload = await sview.network.uploadServer({
   name: '接收文件', server: '', port: 8081, token: '',
   onText(text) { console.log(text); },
-  onFile(percent, path) { console.log('文件', percent, path); },
-  onImage(percent, path) { console.log('图片', percent, path); },
+  onFile(id, percent, path) { console.log('文件', id, percent, path); },
+  onImage(id, percent, path) { console.log('图片', id, percent, path); },
   onStart(handle) { console.log('服务已启动', handle.url); },
   onError(error) { console.error(error.message); },
   onClose() { console.log('服务已关闭'); }
