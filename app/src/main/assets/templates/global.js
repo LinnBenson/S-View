@@ -130,3 +130,126 @@ function storageRemove( key ) {
         return false;
     }
 }
+/**
+ * 设置或插入元素内容
+ * @param {string} selector 选择器
+ * @param {string} html HTML 内容
+ * @param {'all'|'top'|'bottom'} mode 填充方式
+ */
+function content( selector, html, mode = 'all' ) {
+    if ( !['all', 'top', 'bottom'].includes( mode ) ) {
+        throw new Error( '不支持的填充方式' );
+    }
+    document.querySelectorAll( selector ).forEach( element => {
+        if ( mode === 'top' ) {
+            element.insertAdjacentHTML( 'afterbegin', html );
+        }else if (mode === 'bottom') {
+            element.insertAdjacentHTML( 'beforeend', html );
+        }else {
+            element.innerHTML = html;
+        }
+    });
+    if ( typeof globalThis.lucide?.createIcons === 'function' ) {
+        globalThis.lucide.createIcons();
+    }
+}
+/**
+ * 判断是否有匹配元素包含指定类名
+ * @returns {boolean} 任意一个包含则返回 true
+ */
+function hasClass( selector, className ) {
+    return Array.from( document.querySelectorAll( selector ) )
+        .some( element => element.classList.contains( className ));
+}
+/**
+ * 替换全部类名，传入空字符串可清空
+ * @param {string} selector 选择器
+ * @param {string} classNames 类名字符串
+ */
+function setClass( selector, classNames ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        element.setAttribute( 'class', classNames );
+    });
+}
+/**
+ * 添加类名，多个类名用空格分隔
+ * @param {string} selector 选择器
+ * @param {string} classNames 类名字符串
+ */
+function addClass( selector, classNames ) {
+    const names = classNames.trim().split( /\s+/ ).filter( Boolean );
+    document.querySelectorAll( selector ).forEach( element => {
+        element.classList.add( ...names );
+    });
+}
+/**
+ * 移除指定类名，多个类名用空格分隔
+ * @param {string} selector 选择器
+ * @param {string} classNames 类名字符串
+ */
+function removeClass( selector, classNames ) {
+    const names = classNames.trim().split( /\s+/ ).filter( Boolean );
+    document.querySelectorAll( selector ).forEach( element => {
+        element.classList.remove( ...names );
+    });
+}
+/**
+ * 设置元素样式
+ * @param {string} selector 选择器
+ * @param {string} property 样式属性
+ * @param {string|null} value 样式值，传入 null 可移除
+ */
+function setStyle( selector, property, value ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        if ( value === null ) {
+            element.style.removeProperty( property );
+        } else {
+            element.style.setProperty( property, String( value ) );
+        }
+    });
+}
+/**
+ * 设置元素属性
+ * @param {string} selector 选择器
+ * @param {string} name 属性名
+ * @param {string|null} value 属性值，传入 null 可移除
+ */
+function setAttr( selector, name, value ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        if ( value === null ) {
+            element.removeAttribute( name );
+        } else {
+            element.setAttribute( name, String( value ) );
+        }
+    });
+}
+/**
+ * 移除元素
+ * @param {string} selector 选择器
+ */
+function remove( selector ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        element.remove();
+    });
+}
+/**
+ * 获取第一个匹配元素的内部 HTML
+ * @returns {string|null} 未找到元素时返回 null
+ */
+function getHtml( selector ) {
+    const element = document.querySelector( selector );
+    return element ? element.innerHTML : null;
+}
+/**
+ * 滚动元素到底部
+ * @param {string} selector 选择器
+ */
+function scrollBottom( selector ) {
+    document.querySelectorAll( selector ).forEach( element => {
+        const box = element === document.body || element === document.documentElement ? document.scrollingElement : element;
+        box?.scrollTo({
+            top: box.scrollHeight,
+            behavior: 'smooth'
+        });
+    });
+}

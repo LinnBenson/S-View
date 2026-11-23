@@ -195,6 +195,14 @@ class ProjectRepository(private val context: Context) {
         refreshRuntime(id, path)
     }
 
+    /** 仅还原受保护的全局模板，内容始终取自当前安装包。 */
+    fun restoreTemplate(path: String): String {
+        require(path in ReferenceCatalog.systemTemplateNames) { "只能还原系统模板" }
+        val content = context.assets.open("templates/$path").bufferedReader().use { it.readText() }
+        write(null, path, content)
+        return content
+    }
+
     /** 局域网上传与文本保存共用原子写入，并刷新运行入口缓存。 */
     fun writeBytes(id: String?, path: String, bytes: ByteArray) = sourceChange(path) {
         val file = scoped(if (id == null) templates else root(id), path)

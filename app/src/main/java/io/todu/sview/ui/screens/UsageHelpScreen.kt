@@ -69,7 +69,7 @@ private fun UsageHelpSectionView(section: UsageHelpSection) {
         section.code?.let { code ->
             Column(Modifier.padding(top = 12.dp).fillMaxWidth().background(Color(0xFF18202E), RoundedCornerShape(14.dp))) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (code.startsWith("sview://")) "链接" else "JavaScript", Modifier.weight(1f), color = Color(0xFF95A2B8), fontSize = 11.sp)
+                    Text(if (code.startsWith("sview://")) "链接" else section.language, Modifier.weight(1f), color = Color(0xFF95A2B8), fontSize = 11.sp)
                     CopyAction(code, "复制${section.title}", tint = Color(0xFF95A2B8))
                 }
                 HorizontalDivider(color = Color(0xFF2A3546))

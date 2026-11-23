@@ -23,6 +23,7 @@ fun ResourceScreen(model: WorkspaceModel, onOpen: (ResourceFile) -> Unit, onImpo
     var createFolder by remember { mutableStateOf<Boolean?>(null) }
     var name by remember { mutableStateOf("") }
     var remove by remember { mutableStateOf<ResourceFile?>(null) }
+    var restore by remember { mutableStateOf<ResourceFile?>(null) }
     Column(Modifier.fillMaxSize().padding(horizontal = if (compact) 12.dp else 24.dp)) {
         if (!templates || model.directory.isNotEmpty()) {
             SectionToolbar(if (model.directory.isEmpty()) "资源" else model.directory.substringAfterLast('/'), leading = {
@@ -61,7 +62,9 @@ fun ResourceScreen(model: WorkspaceModel, onOpen: (ResourceFile) -> Unit, onImpo
                         if (entry.global) Text("全局模板", color = Muted, fontSize = 10.sp)
                         else if (!compact && !entry.directory) Text(if (entry.size < 1024) "${entry.size} B" else "${entry.size / 1024} KB", color = Muted, fontSize = 11.sp)
                     }
-                    if (!compact && (!templates || entry.path !in ReferenceCatalog.systemTemplateNames)) {
+                    if (templates && !entry.directory && entry.path in ReferenceCatalog.systemTemplateNames) {
+                        IconAction("undo-2", "还原 ${entry.path}", { restore = entry }, enabled = !model.restoringTemplate)
+                    } else if (!compact) {
                         var menu by remember { mutableStateOf(false) }
                         Box {
                             IconAction("ellipsis", "${entry.path}菜单", { menu = true })
@@ -83,4 +86,8 @@ fun ResourceScreen(model: WorkspaceModel, onOpen: (ResourceFile) -> Unit, onImpo
     remove?.let { entry -> AppDialog(onDismissRequest = { remove = null }, title = { Text("删除 ${entry.path.substringAfterLast('/')}？") },
         confirmButton = { DialogAction("删除", { model.deleteFile(entry); remove = null }) },
         dismissButton = { DialogAction("取消", { remove = null }) }) }
+    restore?.let { entry -> AppDialog(onDismissRequest = { restore = null }, title = { Text("还原 ${entry.path}？") },
+        text = { Text("替换为当前安装包内置版本，此文件的修改将丢失。") },
+        confirmButton = { DialogAction("还原", { model.restoreTemplate(entry); restore = null }, primary = true) },
+        dismissButton = { DialogAction("取消", { restore = null }) }) }
 }

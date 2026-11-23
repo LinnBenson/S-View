@@ -12,17 +12,17 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 
 /** 服务状态随工作区存活；不自动启动，也不在后台维持监听或唤醒锁。 */
-class LanEditorController(private val context: Context, private val dispatch: suspend (String, JSONObject) -> LanResponse) {
-    var running by mutableStateOf(false); private set
-    var addresses by mutableStateOf<List<String>>(emptyList()); private set
-    var message by mutableStateOf<String?>(null); private set
-    var busy by mutableStateOf(false); private set
-    val statusText: String get() = if (busy) "启动中" else if (running) "运行中" else "未启动"
+class LanEditorController(private val context: Context, private val dispatch: suspend (String, JSONObject) -> LanResponse) : LocalEditorController {
+    override var running by mutableStateOf(false); private set
+    override var addresses by mutableStateOf<List<String>>(emptyList()); private set
+    override var message by mutableStateOf<String?>(null); private set
+    override var busy by mutableStateOf(false); private set
+    override val statusText: String get() = if (busy) "启动中" else if (running) "运行中" else "未启动"
     private var server: LanHttpServer? = null
     private var generation = 0
-    val savedPort: String get() = context.getSharedPreferences("lan-editor", Context.MODE_PRIVATE).getInt("port", 8899).toString()
+    override val savedPort: String get() = context.getSharedPreferences("lan-editor", Context.MODE_PRIVATE).getInt("port", 8899).toString()
 
-    suspend fun savedPassword(): String = try {
+    override suspend fun savedPassword(): String = try {
         withContext(Dispatchers.IO) { LanPasswordStore(context).read() }
     } catch (cancelled: kotlinx.coroutines.CancellationException) {
         throw cancelled
@@ -31,7 +31,7 @@ class LanEditorController(private val context: Context, private val dispatch: su
         ""
     }
 
-    suspend fun start(portText: String, password: String) {
+    override suspend fun start(portText: String, password: String) {
         if (running || busy) return
         busy = true
         val current = ++generation
@@ -65,7 +65,7 @@ class LanEditorController(private val context: Context, private val dispatch: su
         }
     }
 
-    fun stop() {
+    override fun stop() {
         ++generation
         server?.close(); server = null; running = false; addresses = emptyList()
     }

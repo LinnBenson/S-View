@@ -24,13 +24,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.todu.sview.lan.LanEditorController
+import io.todu.sview.lan.LocalEditorController
 import io.todu.sview.ui.components.*
 import kotlinx.coroutines.launch
 
 /** 连接页沿用应用表单与浅色操作区，服务状态和访问地址分开展示。 */
 @Composable
-fun LanEditorScreen(controller: LanEditorController, onBack: () -> Unit) {
+fun LanEditorScreen(controller: LocalEditorController, ftp: Boolean = false, onBack: () -> Unit) {
     var port by remember { mutableStateOf(controller.savedPort) }
     // 密码仅在本页内存中使用，不进入可恢复状态或剪贴板。
     var password by remember { mutableStateOf("") }
@@ -44,11 +44,12 @@ fun LanEditorScreen(controller: LanEditorController, onBack: () -> Unit) {
     val round = LocalConfiguration.current.isScreenRound
     val editable = !controller.running && !controller.busy
     Column(Modifier.fillMaxSize()) {
-        PageHeader("局域网编辑器", onBack)
+        PageHeader(if (ftp) "FTP 编辑器" else "局域网编辑器", onBack)
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
             .imePadding().verticalScroll(rememberScrollState()).padding(horizontal = if (round) 4.dp else 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            LanServiceStatus(controller)
+            LanServiceStatus(controller, ftp)
+            if (ftp) Text("用户名：sview", color = Ink, fontSize = 14.sp)
             if (controller.running) LanAddresses(controller.addresses)
             else Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 AppTextField(port, { port = it.filter(Char::isDigit).take(5) }, label = { Text("端口") },
@@ -70,14 +71,14 @@ fun LanEditorScreen(controller: LanEditorController, onBack: () -> Unit) {
                 if (controller.running) controller.stop() else scope.launch { controller.start(port, password) }
             }
             controller.message?.let { Text(it, color = Color(0xFFC45360), fontSize = 12.sp, lineHeight = 19.sp) }
-            Text("同一局域网 · 离开应用自动停止\nHTTP 连接，仅在可信网络使用", color = Muted, fontSize = 11.sp, lineHeight = 19.sp)
+            Text(if (ftp) "同一局域网 · 离开应用自动停止\nFTP 不加密，仅在可信网络使用" else "同一局域网 · 离开应用自动停止\nHTTP 连接，仅在可信网络使用", color = Muted, fontSize = 11.sp, lineHeight = 19.sp)
         }
     }
 }
 
 /** 状态从服务控制器直接读取，不在页面维护另一份运行标记。 */
 @Composable
-private fun LanServiceStatus(controller: LanEditorController) {
+private fun LanServiceStatus(controller: LocalEditorController, ftp: Boolean) {
     val tint = if (controller.running) Color(0xFF42856B) else if (controller.busy) Blue else Muted
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).padding(18.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -85,7 +86,7 @@ private fun LanServiceStatus(controller: LanEditorController) {
             AppIcon("network", tint = tint, modifier = Modifier.size(23.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("局域网服务", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(if (ftp) "FTP 服务" else "局域网服务", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(6.dp).background(tint, CircleShape))
                 Text(controller.statusText, color = tint, fontSize = 12.sp)
@@ -96,7 +97,7 @@ private fun LanServiceStatus(controller: LanEditorController) {
 
 /** 启停使用与项目弹窗一致的圆角、图标和浅色强调。 */
 @Composable
-private fun LanServiceAction(controller: LanEditorController, onClick: () -> Unit) {
+private fun LanServiceAction(controller: LocalEditorController, onClick: () -> Unit) {
     val tint = if (controller.running) Color(0xFFC45360) else Blue
     val background = if (controller.running) Color(0xFFFCF0F2) else Color(0xFFEAF0FF)
     Row(Modifier.fillMaxWidth().heightIn(min = 46.dp).clip(RoundedCornerShape(10.dp)).background(background)

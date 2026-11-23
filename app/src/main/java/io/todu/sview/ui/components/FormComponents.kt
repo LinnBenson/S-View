@@ -86,7 +86,7 @@ fun DialogAction(label: String, onClick: () -> Unit, primary: Boolean = false) {
     }
     val icon = when (label) {
         "创建", "添加" -> "plus"
-        "保存" -> "check"
+        "保存", "还原" -> "check"
         "删除", "清除" -> "trash"
         else -> "x"
     }

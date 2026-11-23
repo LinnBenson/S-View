@@ -440,6 +440,34 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
         task { io { repository.delete(id, entry) }; refresh() }
     }
 
+    var restoringTemplate by mutableStateOf(false); private set
+
+    /** 与自动保存共用 IO 队列，还原后同步编辑缓冲，避免旧内容再次写回。 */
+    fun restoreTemplate(entry: ResourceFile) {
+        if (projectId != null || restoringTemplate || entry.directory) return
+        restoringTemplate = true
+        val current = filePath == entry.path
+        val generation = if (current) ++fileGeneration else fileGeneration
+        val wasReady = fileReady
+        if (current) {
+            saveJob?.cancel()
+            fileReady = false
+        }
+        task {
+            try {
+                val content = io { repository.restoreTemplate(entry.path) }
+                if (current && projectId == null && generation == fileGeneration) {
+                    code = content; saved = true; editorKey++
+                }
+                if (projectId == null) refresh()
+                Toast.makeText(getApplication(), "${entry.path} 已还原", Toast.LENGTH_SHORT).show()
+            } finally {
+                if (current && projectId == null && generation == fileGeneration) fileReady = wasReady
+                restoringTemplate = false
+            }
+        }
+    }
+
     fun importFile(uri: Uri, name: String) {
         val id = projectId; val dir = directory
         task { io { repository.importResource(id, dir, uri, name) }; refresh() }
@@ -508,6 +536,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
             }
             closeWatchConnection()
             lanEditor.stop()
+            stopFtpEditor()
         } catch (failure: Exception) {
             appExiting = false
             throw failure
@@ -588,6 +617,31 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun removeDatabase(entry: ScriptVariable) = task { io { database.remove(entry.name, entry) } }
+
+    private val ftpWorkspace by lazy { io.todu.sview.ftp.FtpWorkspace(repository) }
+    private val ftpDelegate = lazy {
+        check(!io.todu.sview.wear.WatchDevice.isWatch(getApplication()))
+        io.todu.sview.ftp.FtpEditorController(getApplication()) { request ->
+            kotlinx.coroutines.runBlocking { ftpRequest(request) }
+        }
+    }
+    val ftpEditor get() = ftpDelegate.value
+
+    /** 生命周期清理不能为了停止服务而在手表端初始化控制器。 */
+    fun stopFtpEditor() { if (ftpDelegate.isInitialized()) ftpDelegate.value.stop() }
+
+    /** 上传只在完整接收后提交，快照与文件修改共用锁，传输等待不占用工作区。 */
+    private suspend fun ftpRequest(request: io.todu.sview.ftp.FtpRequest): io.todu.sview.ftp.FtpResult =
+        withContext(Dispatchers.Main + kotlinx.coroutines.NonCancellable) {
+            mutationLock.withLock {
+                check(ready && ftpEditor.accepts(request) && !appExiting && !clearingCache) { "服务已停止或工作区正忙" }
+                val writing = request.action in setOf("write", "mkdir", "delete", "rmdir", "rename")
+                if (writing) check(!editorOpen) { "请先关闭手机上的代码编辑页面" }
+                saveJob?.cancel()
+                if (!saved && fileReady) persist(projectId, filePath, code)
+                io { ftpWorkspace.execute(request, projects) }
+            }
+        }
 
     private val lanWorkspace by lazy { io.todu.sview.lan.LanWorkspace(repository, getApplication<Application>().cacheDir) }
     val lanEditor = io.todu.sview.lan.LanEditorController(application, ::lanRequest)
@@ -676,6 +730,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         lanEditor.stop()
+        stopFtpEditor()
         closeWatchConnection()
         super.onCleared()
     }

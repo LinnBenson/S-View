@@ -16,7 +16,7 @@ import io.todu.sview.ui.components.*
 
 /** 固定外观与编辑器样式，只保留实际需要管理的设置入口。 */
 @Composable
-fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, onPermissions: () -> Unit, onLogs: () -> Unit, onInterfaces: () -> Unit, clearingCache: Boolean, onClearCache: (() -> Unit) -> Unit, onLanEditor: () -> Unit, lanStatus: String, lanRunning: Boolean, onDatabase: () -> Unit, onWatch: () -> Unit, onAbout: () -> Unit, onHelp: () -> Unit) {
+fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, onPermissions: () -> Unit, onLogs: () -> Unit, onInterfaces: () -> Unit, clearingCache: Boolean, onClearCache: (() -> Unit) -> Unit, onLanEditor: () -> Unit, lanStatus: String, lanRunning: Boolean, onDatabase: () -> Unit, onWatch: () -> Unit, onAbout: () -> Unit, onHelp: () -> Unit, onFtpEditor: () -> Unit, ftpStatus: String, ftpRunning: Boolean) {
     var confirmClear by remember { mutableStateOf(false) }
     var cacheCleared by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
@@ -37,10 +37,13 @@ fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, o
             SettingRow("file-spreadsheet", "项目日志", onClick = onLogs)
             Spacer(Modifier.height(16.dp))
             Text("连接", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 10.dp))
+            SettingRow("watch", "手表连接", onClick = onWatch)
+            HorizontalDivider(color = Line)
             SettingRow("network", "局域网编辑器", value = lanStatus, onClick = onLanEditor,
                 valueColor = if (lanRunning) androidx.compose.ui.graphics.Color(0xFF42856B) else Muted)
             HorizontalDivider(color = Line)
-            SettingRow("watch", "手表连接", onClick = onWatch)
+            SettingRow("folder", "FTP 编辑器", value = ftpStatus, onClick = onFtpEditor,
+                valueColor = if (ftpRunning) androidx.compose.ui.graphics.Color(0xFF42856B) else Muted)
             Spacer(Modifier.height(16.dp))
             Text("通用", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 10.dp))
             SettingRow("trash", "清除缓存", value = if (clearingCache) "清理中…" else if (cacheCleared) "已清除" else null,

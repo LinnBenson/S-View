@@ -86,4 +86,163 @@ internal val toolInterfaceHelp = listOf(
         note = "由 global.js 提供。请先在项目引用项中加载此模板，直接调用函数，无需 await。",
         category = "工具",
     ),
+    InterfaceHelpEntry(
+        name = "content",
+        brief = "设置元素内容",
+        summary = "设置所有匹配元素的内部 HTML，或在内部顶部、底部插入内容。已加载 Lucide 且 createIcons 可用时，填充后自动生成页面中的图标。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器，支持 #app、.card、button、[button] 及组合选择器。"),
+            InterfaceParameter("html", "string", true, "要替换或插入的 HTML 内容。"),
+            InterfaceParameter("mode", "string", false, "all 替换内容，top 在内部顶部插入，bottom 在内部底部插入。", "all")
+        ),
+        resultType = "void",
+        result = "返回 undefined，不返回元素或等待图标加载。未加载 Lucide 时仍会填充内容。",
+        failure = "mode 不是 all、top 或 bottom，或选择器语法无效时抛出异常；没有匹配元素时不填充内容。Lucide 生成图标时的异常会继续抛出。",
+        example = """content('#app', `
+  <button button>
+    <i data-lucide="house"></i>
+    <span>首页</span>
+  </button>
+`);
+content('#app', '<p>最新消息</p>', 'top');
+content('#app', '<p>更多内容</p>', 'bottom');""",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。HTML 仅使用可信内容；替换会移除原有子元素及其绑定的事件，插入的 script 标签不会自动执行。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "hasClass",
+        brief = "判断元素类名",
+        summary = "判断是否有任意匹配元素包含指定类名。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("className", "string", true, "单个类名，不使用点号前缀。"),
+        ),
+        resultType = "boolean",
+        result = "任意一个匹配元素包含该类名时返回 true；没有匹配元素时返回 false。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "console.log(hasClass('.card', 'active'));",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "setClass",
+        brief = "替换元素类名",
+        summary = "替换所有匹配元素的全部类名，空字符串会清空类名。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("classNames", "string", true, "完整类名字符串，多个类名用空格分隔。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "setClass('.card', 'card active');",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "addClass",
+        brief = "添加元素类名",
+        summary = "为所有匹配元素添加类名，保留已有类名。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("classNames", "string", true, "多个类名用空白分隔；空字符串不作修改。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "addClass('.card', 'active highlighted');",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "removeClass",
+        brief = "移除元素类名",
+        summary = "从所有匹配元素中移除指定类名，保留其他类名。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("classNames", "string", true, "多个类名用空白分隔；空字符串不作修改。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "removeClass('.card', 'active highlighted');",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "setStyle",
+        brief = "设置元素样式",
+        summary = "设置所有匹配元素的内联样式属性，传入 null 时移除该内联属性。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("property", "string", true, "CSS 属性名，如 background-color 或 --accent。"),
+            InterfaceParameter("value", "string|null", true, "样式值；null 表示移除，其他值会转换为字符串。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined；移除内联属性后仍可能应用样式表中的规则。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "setStyle('.card', 'background-color', 'red');\nsetStyle('.card', 'background-color', null);",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "setAttr",
+        brief = "设置元素属性",
+        summary = "设置所有匹配元素的属性，传入 null 时移除属性。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("name", "string", true, "HTML 属性名。"),
+            InterfaceParameter("value", "string|null", true, "属性值；null 表示移除，其他值会转换为字符串。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined；布尔属性通过 null 移除，传入 false 会写入字符串 false。",
+        failure = "选择器语法无效或属性名无效时抛出异常。",
+        example = "setAttr('button', 'disabled', '');\nsetAttr('button', 'disabled', null);",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "remove",
+        brief = "移除元素",
+        summary = "从文档中移除所有匹配元素及其子元素。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+        ),
+        resultType = "void",
+        result = "返回 undefined；没有匹配元素时不作修改。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "remove('.temporary');",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "getHtml",
+        brief = "读取元素内容",
+        summary = "读取第一个匹配元素的内部 HTML。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+        ),
+        resultType = "string|null",
+        result = "返回内部 HTML 字符串；元素为空时返回空字符串，没有匹配元素时返回 null。",
+        failure = "选择器语法无效时抛出异常。",
+        example = "const html = getHtml('#app');\nconsole.log(html);",
+        note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "scrollBottom",
+        brief = "滚动元素到底部",
+        summary = "让所有匹配的滚动容器平滑滚动到底部。选中 body 或 html 时，改为滚动整个页面的实际滚动元素。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器，例如 #messages、.scroll、[box] 或 body。")
+        ),
+        resultType = "void",
+        result = "返回 undefined；发起滚动后立即返回，不等待滚动动画结束。",
+        failure = "选择器语法无效时抛出异常；没有匹配元素或没有可滚动距离时，不会产生滚动。",
+        example = """scrollBottom('#messages');
+// 滚动整个页面。
+scrollBottom('body');""",
+        note = "由 global.js 提供，请先在项目引用项中加载。内部容器需设置高度或最大高度，并启用 overflow-y: auto 或 scroll。应在内容更新后调用；图片等稍后加载导致高度变化时，需要再次调用。",
+        category = "工具",
+    ),
 )

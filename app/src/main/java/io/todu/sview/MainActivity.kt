@@ -96,6 +96,7 @@ open class MainActivity : ComponentActivity() {
             model.closeWatchConnection()
             stopService(android.content.Intent(this, io.todu.sview.runtime.overlay.OverlayService::class.java))
             model.lanEditor.stop()
+            model.stopFtpEditor()
             if (!watchExitReady) model.flush()
         }
         super.onDestroy()
@@ -109,6 +110,7 @@ open class MainActivity : ComponentActivity() {
     override fun onStop() {
         if (!redirectedToWatch) {
             model.lanEditor.stop()
+            model.stopFtpEditor()
             if (!watchExitReady) model.flush()
         }
         super.onStop()
@@ -221,12 +223,13 @@ open class MainActivity : ComponentActivity() {
                         Box(Modifier.weight(1f)) {
                             if (!model.ready) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                             else if (shortcutRequest == null) when (page) {
-                                "settings" -> SettingsScreen(wide, { page = "home" }, { model.openProject(null); page = "templates" }, { page = "permissions" }, { page = "logs" }, { page = "interfaces" }, model.clearingCache, model::clearCaches, { page = "lan" }, model.lanEditor.statusText, model.lanEditor.running, { page = "database" }, { page = "watch" }, { page = "about" }, { page = "help" })
+                                "settings" -> SettingsScreen(wide, { page = "home" }, { model.openProject(null); page = "templates" }, { page = "permissions" }, { page = "logs" }, { page = "interfaces" }, model.clearingCache, model::clearCaches, { page = "lan" }, model.lanEditor.statusText, model.lanEditor.running, { page = "database" }, { page = "watch" }, { page = "about" }, { page = "help" }, { page = "ftp" }, model.ftpEditor.statusText, model.ftpEditor.running)
                                 "watch" -> io.todu.sview.wear.WatchConnectionScreen(model.watchConnection, model.projects) { page = "settings" }
                                 "help" -> UsageHelpScreen { page = "settings" }
                                 "about" -> AboutScreen { page = "settings" }
                                 "database" -> DatabaseScreen(model) { page = "settings" }
                                 "lan" -> LanEditorScreen(model.lanEditor) { page = "settings" }
+                                "ftp" -> LanEditorScreen(model.ftpEditor, ftp = true) { page = "settings" }
                                 "interfaces" -> SystemInterfacesScreen(onBack = { page = "settings" })
                                 "logs" -> ProjectLogsScreen(model) { page = "settings" }
                                 "permissions" -> PermissionsScreen { page = "settings" }

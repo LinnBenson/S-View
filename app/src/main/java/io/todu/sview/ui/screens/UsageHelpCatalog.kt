@@ -2,7 +2,7 @@ package io.todu.sview.ui.screens
 
 /** 帮助正文按段落与示例组织，新增条目不需要修改页面布局。 */
 internal data class UsageHelpEntry(val id: String, val title: String, val brief: String, val sections: List<UsageHelpSection>)
-internal data class UsageHelpSection(val title: String, val text: String, val code: String? = null)
+internal data class UsageHelpSection(val title: String, val text: String, val code: String? = null, val language: String = "JavaScript")
 
 internal val usageHelpEntries = listOf(
     UsageHelpEntry("url-schemes", "URL Schemes", "从其他应用启动项目并传入文本", listOf(
@@ -18,5 +18,53 @@ console.log(share.title); // URL Schemes
 console.log(share.text);  // 开始 25 分钟
 console.log(share.files); // []"""),
         UsageHelpSection("使用注意", "项目必须已存在于当前设备。URL Schemes 不受项目“共享来源”设置限制。已有项目运行窗口时，请先关闭再调用。\n\n普通启动时 getShare() 返回 { text: '', title: '', files: [] }。其他应用也能构造启动链接，脚本应检查传入内容后再执行操作。")
-    ))
+    )),
+    UsageHelpEntry("message-box", "信息盒子", "用图标、标题和正文展示提示信息", listOf(
+        UsageHelpSection("HTML 示例", "先加载 global.css 和 Lucide 图标库，再将以下内容放入页面。", """<div box>
+    <div icon>
+        <i data-lucide="circle-x" style="stroke: rgb( var( --r5 ) );"></i>
+    </div>
+    <p title>发生错误</p>
+    <p text>系统运行时发生了一些错误</p>
+</div>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。如果使用 global.js 中的 content() 填充内容，会自动生成图标。"),
+    )),
+    UsageHelpEntry("card", "卡片组件", "在卡片中展示标题、内容和操作按钮", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 和 Lucide 图标库后使用。按钮的点击操作需自行绑定。", """<div card>
+    <div title>卡片标题</div>
+    <div>
+        卡片内容
+    </div>
+    <button class="top8" button icon><i data-lucide="house"></i>返回首页</button>
+</div>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
+    )),
+    UsageHelpEntry("item", "item 元素", "在同一项中展示左侧文字和右侧操作", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 和 Lucide 图标库后使用。按钮的点击操作需自行绑定。", """<div item>
+    <p class="more">项目左侧文字</p>
+    <div right>
+        <button button icon r4><i data-lucide="chevron-right"></i></button>
+    </div>
+</div>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
+    )),
+    UsageHelpEntry("loader", "加载组件", "显示加载动画", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 后使用。加载结束后移除或隐藏此元素。", """<div loader></div>""", language = "HTML"),
+    )),
+    UsageHelpEntry("flex", "间隔布局", "让子元素之间保持间隔", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 和 Lucide 图标库后使用。", """<div flex>
+    <button button icon><i data-lucide="house"></i></button>
+    <button button icon><i data-lucide="house"></i></button>
+    <button button icon><i data-lucide="house"></i></button>
+</div>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
+    )),
+    UsageHelpEntry("row", "行平分布局", "子元素两端对齐，均匀分配间距，保留各自宽度", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 和 Lucide 图标库后使用。", """<div row>
+    <button button icon><i data-lucide="house"></i></button>
+    <button button icon><i data-lucide="house"></i></button>
+    <button button icon><i data-lucide="house"></i></button>
+</div>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
+    )),
 )

@@ -12,9 +12,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** 密码只保存在本机，用系统密钥加密且不参与云备份。调用方在 IO 线程读写。 */
-internal class LanPasswordStore(context: Context) {
-    private val file = AtomicFile(File(context.noBackupFilesDir, "lan-password"))
-    private val alias = "sview-lan-password"
+internal class LanPasswordStore(context: Context, name: String = "lan-password") {
+    private val file = AtomicFile(File(context.noBackupFilesDir, name))
+    private val alias = "sview-$name"
 
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

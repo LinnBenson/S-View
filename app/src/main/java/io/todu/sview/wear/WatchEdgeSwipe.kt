@@ -13,7 +13,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-/** 仅识别左侧 12dp 边缘区域起手的右滑，返回前给予一次系统触感反馈。 */
+/** 仅识别左侧 16dp 边缘区域起手的右滑，返回前给予一次系统触感反馈。 */
 fun Modifier.watchEdgeSwipe(round: Boolean, onBack: () -> Unit): Modifier = composed {
     val haptics = LocalHapticFeedback.current
     val currentOnBack = rememberUpdatedState(onBack)
@@ -24,7 +24,7 @@ fun Modifier.watchEdgeSwipe(round: Boolean, onBack: () -> Unit): Modifier = comp
             val radius = size.width / 2f
             val relativeY = down.position.y - size.height / 2f
             val left = if (round) radius - sqrt((radius * radius - relativeY * relativeY).coerceAtLeast(0f)) else 0f
-            if (down.position.x < left || down.position.x > left + 12.dp.toPx()) return@awaitEachGesture
+            if (down.position.x < left || down.position.x > left + 16.dp.toPx()) return@awaitEachGesture
             var returned = false
             do {
                 val event = awaitPointerEvent(PointerEventPass.Initial)

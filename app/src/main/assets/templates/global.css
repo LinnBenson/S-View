@@ -11,7 +11,25 @@
     --r5c: var( --r0 );
     --r6: 249, 247, 244;
     --font: 15px;
-    --radius: 4px;
+    --radius: 12px;
+}
+/* 手表端样式优化 */
+@media ( min-width: 220px ) and ( max-width: 240px ) {
+    :root {
+        --r0: 0, 0, 0;
+        --r1: 225, 225, 225;
+        --r2: 65, 115, 179;
+        --r2c: var( --r1 );
+        --r3: 53, 75, 111;
+        --r3c: var( --r1 );
+        --r4: 52, 168, 83;
+        --r4c: var( --r1 );
+        --r5: 207, 99, 89;
+        --r5c: var( --r1 );
+        --r6: 51, 52, 59;
+        --font: 14px;
+        --radius: 12px;
+    }
 }
 * {
     --fontSize: var( --font, 15px );
@@ -59,15 +77,6 @@ body {
     color: rgb( var( --r1 ) );
     font-size: var( --fontSize );
 }
-i.block {
-    display: inline-block;
-    width: var( --size );
-    height: var( --size );
-    text-align: center;
-    line-height: var( --size );
-    vertical-align: middle;
-    box-sizing: border-box;
-}
 .spin {
     display: inline-block;
     animation: SpinElement 1.5s linear infinite;
@@ -94,7 +103,6 @@ i.block {
     -webkit-justify-content: center;
 }
 .bold { font-weight: bold; }
-i.bold::before { font-weight: bold !important; }
 .click { cursor: pointer; }
 .hidden { display: none !important; }
 .clear::after {
@@ -114,4 +122,193 @@ i.bold::before { font-weight: bold !important; }
 .padding8 { padding: 8px; } .padding16 { padding: 16px; } .padding24 { padding: 24px; } .padding32 { padding: 32px; } .padding40 { padding: 40px; }
 @media ( max-width: 580px ) {
     .padding8 { padding: 6px; } .padding16 { padding: 12px; } .padding24 { padding: 16px; } .padding32 { padding: 20px; } .padding40 { padding: 24px; }
+}
+.lucide {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    stroke: rgb( var( --r1 ) );
+    vertical-align: -0.125em;
+}
+/* 基础框架 */
+html {
+    scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+    display: none;
+}
+main#app {
+    display: block;
+    min-width: 100vw;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+/* 基础框架 - 信息框 */
+[box] {
+    padding: 16px 0px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+[box] [icon] {
+    margin-bottom: 8px;
+}
+[box] [icon] .lucide {
+    width: 46px;
+    height: 46px;
+    stroke-width: 1.2;
+}
+[box] [title] { font-weight: bold; }
+[box] [text] { font-size: calc( var( --fontSize ) - 2px ); opacity: 0.5; }
+/* 基础组件 - 卡片 */
+[card] {
+    --padding: 12px;
+    padding: var( --padding );
+    margin-bottom: 16px;
+    background: rgb( var( --r6 ) );
+    border-radius: var( --radius );
+    box-sizing: border-box;
+}
+[card] [title] {
+    width: calc( 100% );
+    padding: calc( var( --padding ) / 2 ) var( --padding );
+    margin-left: calc( var( --padding ) * -1 );
+    margin-top: calc( var( --padding ) * -1 );
+    margin-bottom: calc( var( --padding ) / 2 );
+    border-bottom: 1px solid rgb( var( --r1 ), 0.2 );
+}
+/* 基础组件 - 项目 */
+[item] {
+    --padding: 12px;
+    --gap: 8px;
+    display: flex;
+    align-items: center;
+    padding: var( --padding );
+    margin-bottom: 16px;
+    background: rgb( var( --r6 ) );
+    border-radius: var( --radius );
+    box-sizing: border-box;
+    gap: var( --gap );
+}
+[item] [right] {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+/* 基础组件 - 按钮样式 */
+[button] {
+    --background: rgb( var( --r3 ) );
+    --color: rgb( var( --r3c ) );
+    display: inline-flex;
+    gap: 4px;
+    padding: 10px 16px;
+    background: var( --background );
+    font-size: var( --fontSize, 15px );
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    border-radius: 99px;
+    border: none;
+}
+[button][r1] { --background: rgb( var( --r1 ) ); --color: rgb( var( --r0 ) ); }
+[button][r2] { --background: rgb( var( --r2 ) ); --color: rgb( var( --r2c ) ); }
+[button][r3] { --background: rgb( var( --r3 ) ); --color: rgb( var( --r3c ) ); }
+[button][r4] { --background: rgb( var( --r4 ) ); --color: rgb( var( --r4c ) ); }
+[button][r5] { --background: rgb( var( --r5 ) ); --color: rgb( var( --r5c ) ); }
+[button][r6] { --background: rgb( var( --r6 ) ); --color: rgb( var( --r1 ) ); }
+[button][icon] {
+    padding: 10px;
+}
+[button], [button] * {
+    font-size: var( --fontSize );
+    color: var( --color );
+    stroke: var( --color );
+}
+[button]:active {
+    animation: button-pop 0.25s ease;
+}
+@keyframes button-pop {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+}
+/* 基础组件 - 布局 */
+[flex] {
+    --gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var( --gap );
+}
+[flex] > * {
+    flex-shrink: 0;
+}
+[row] {
+    --gap: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var( --gap );
+}
+[row] > * {
+    flex: 0 0 auto;
+}
+[center] { text-align: center; }
+/* 基础组件 - 加载器 */
+[loader] {
+    --color: rgb( var( --r3 ) );
+    width: 46px;
+    margin: 0px auto;
+    aspect-ratio: 1;
+    display: grid;
+}
+[loader]::before, [loader]::after {
+    --c: no-repeat radial-gradient( farthest-side, var( --color ) 92%, #0000 );
+    content:"";
+    grid-area: 1/1;
+    background: var( --c ) 50%  0, var( --c ) 50%  100%, var( --c ) 100% 50%, var( --c ) 0    50%;
+    background-size: 12px 12px;
+    animation: l12 1s infinite;
+}
+[loader]::before {
+    margin: 4px;
+    filter: hue-rotate( 45deg );
+    background-size: 8px 8px;
+    animation-timing-function: linear
+}
+@keyframes l12 { 100%{ transform: rotate( .5turn ) } }
+/* 基础组件 - 元素进入 */
+[toTop] { animation: toTop 0.3s ease-out both; }
+[toRight] { animation: toRight 0.3s ease-out both; }
+[toBottom] { animation: toBottom 0.3s ease-out both; }
+[toLeft] { animation: toLeft 0.3s ease-out both; }
+@keyframes toTop {
+    from { opacity: 0; transform: translateY( 24px ); }
+    to { opacity: 1; transform: translateY( 0 ); }
+}
+@keyframes toRight {
+    from { opacity: 0; transform: translateX( 24px ); }
+    to { opacity: 1; transform: translateX( 0 ); }
+}
+@keyframes toLeft {
+    from { opacity: 0; transform: translateX( -24px ); }
+    to { opacity: 1; transform: translateX( 0 ); }
+}
+@keyframes toBottom {
+    from { opacity: 0; transform: translateY( -24px ); }
+    to { opacity: 1; transform: translateY( 0 ); }
+}
+/* 手表端样式优化 */
+@media ( min-width: 220px ) and ( max-width: 240px ) {
+    main#app {
+        padding: 20px;
+    }
+    [box] {
+        margin-bottom: 12px;
+    }
+    [card] {
+        --padding: 10px;
+        margin-bottom: 12px;
+    }
+    [item] {
+        --padding: 10px;
+        margin-bottom: 12px;
+    }
 }
