@@ -25,6 +25,7 @@ fun AppIcon(name: String, description: String? = null, modifier: Modifier = Modi
     val resource = when (name) {
         "circle-fading-play" -> R.drawable.lucide_circle_fading_play
         "folder-sync" -> R.drawable.lucide_folder_sync
+        "screen-share" -> R.drawable.lucide_screen_share
         "square-stop" -> R.drawable.lucide_square_stop
         "file-spreadsheet" -> R.drawable.lucide_file_spreadsheet
         "refresh-cw" -> R.drawable.lucide_refresh_cw

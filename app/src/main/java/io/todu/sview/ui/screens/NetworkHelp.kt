@@ -3,6 +3,19 @@ package io.todu.sview.ui.screens
 /** 原生请求及其链式方法，所有示例均使用同一个 sview.network 入口。 */
 internal val networkInterfaceHelp = listOf(
     InterfaceHelpEntry(
+        name = "sview.network.interface",
+        brief = "列出网卡接口",
+        summary = "读取系统向应用公开的网卡，包含可见的回环接口和未启用接口，不进行网络扫描。",
+        parameters = emptyList(),
+        resultType = "Promise<object[]>",
+        result = "返回网卡数组：name、displayName、index、isUp、isLoopback、isVirtual、mtu 和 addresses。addresses 每项包含 address、family（IPv4 或 IPv6）及 prefixLength；没有可见网卡时返回空数组。",
+        failure = "系统拒绝读取或读取失败时 Promise 拒绝。",
+        example = """const interfaces = await sview.network.interface();
+console.log(JSON.stringify(interfaces, null, 2));""",
+        note = "仅返回 Android 允许应用查看的接口和地址，不包含 MAC 地址。IPv6 地址可能带作用域标识；结果是当前快照，不代表每个地址都适合启动局域网服务器。",
+        category = "网络"
+    ),
+    InterfaceHelpEntry(
         name = "sview.network.hotspot",
         brief = "启动本地 Wi-Fi 热点",
         summary = "创建只用于设备间局域网通信的热点，不共享移动网络。必须在运行窗口前台启动，名称和密码由系统生成。",

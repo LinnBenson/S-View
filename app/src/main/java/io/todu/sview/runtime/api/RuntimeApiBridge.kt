@@ -29,6 +29,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val interaction = InteractionApiBridge(resize, dismiss, location, removeClose, margin, cornerRadius, preview::open, exitApplication)
 
     fun invoke(request: JSONObject): JSONObject = when {
+        request.optString("method") == "network.interface" -> NetworkInterfaceApiBridge.invoke()
         request.optString("method") in listOf("network.server", "network.server.close") -> customServers.invoke(request)
         request.optString("method") == "resource.openDevice" -> deviceLinks.invoke(request)
         request.optString("method") in listOf("network.chatServer", "network.uploadServer", "network.localServer.send", "network.localServer.close") -> localServers.invoke(request)

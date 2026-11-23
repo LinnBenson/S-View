@@ -17,7 +17,7 @@ internal class ChunkedRequestBody(private val source: InputStream) : InputStream
         if (length == 0) return 0
         if (ending) return -1
         if (remaining == 0L) {
-            if (separator) require(source.read() == 13 && source.read() == 10) { "数据块分隔符无效" }
+            if (separator) require(next() == 13 && next() == 10) { "数据块分隔符无效" }
             val size = line().substringBefore(';').trim()
             remaining = size.toLongOrNull(16)?.takeIf { it >= 0 } ?: error("数据块长度无效")
             if (remaining == 0L) {
@@ -34,17 +34,20 @@ internal class ChunkedRequestBody(private val source: InputStream) : InputStream
             separator = true
         }
         val count = source.read(bytes, offset, minOf(length.toLong(), remaining).toInt())
-        check(count > 0) { "请求内容不完整" }
+        if (count < 0) throw java.io.EOFException("请求内容不完整")
         remaining -= count
         return count
     }
+
+    /** 分块边界提前断开属于传输中断，不是格式错误。 */
+    private fun next(): Int = source.read().also { if (it < 0) throw java.io.EOFException("请求内容不完整") }
 
     private fun line(): String {
         val text = StringBuilder()
         while (text.length <= 8192) {
             val byte = source.read()
-            check(byte >= 0) { "请求内容不完整" }
-            if (byte == 13) { require(source.read() == 10); return text.toString() }
+            if (byte < 0) throw java.io.EOFException("请求内容不完整")
+            if (byte == 13) { require(next() == 10); return text.toString() }
             require(byte != 10) { "数据块格式无效" }
             text.append(byte.toChar())
         }

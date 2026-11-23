@@ -38,11 +38,11 @@ internal class LanHttpTransport(address: InetAddress, port: Int, private val rou
                 try {
                     val socket = listener.accept()
                     sockets.add(socket)
-                    if (closed) { socket.close(); sockets.remove(socket); break }
+                    if (closed) { runCatching { socket.close() }; sockets.remove(socket); break }
                     try { workers.execute { serve(socket) } }
                     catch (_: java.util.concurrent.RejectedExecutionException) {
                         if (configuration.custom) runCatching { Reply(socket.getOutputStream()).bytes(byteArrayOf(), "text/plain", 503) }
-                        socket.close(); sockets.remove(socket)
+                        runCatching { socket.close() }; sockets.remove(socket)
                     }
                 } catch (error: Exception) { if (!closed) { failed(error); close() } }
             }
@@ -137,7 +137,8 @@ internal class LanHttpTransport(address: InetAddress, port: Int, private val rou
         }
     }
 
-    class Reply(private val output: OutputStream, private val head: Boolean = false) {
+    class Reply(output: OutputStream, private val head: Boolean = false) {
+        private val output = LanTransferIo.output(output)
         var started = false; private set
         private fun headers(type: String, size: Long, status: Int = 200, extra: String = "") {
             started = true

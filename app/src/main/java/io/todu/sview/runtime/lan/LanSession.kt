@@ -185,47 +185,63 @@ internal class LanSession(private val context: Context, val id: String, private 
         check(upload.tryAcquire()) { "已有文件正在上传，请稍后重试" }
         // 每次上传生成独立 ID，接收进度和保存结果共用此 ID。
         val transferId = UUID.randomUUID().toString()
-        val file = File(temporary, "$transferId.part")
-        partials.add(file)
+        var file: File? = null
+        var committed = false
+        var cancelled = false
         try {
             val image = request.path == "/image"
             val name = request.query["name"] ?: error("缺少文件名")
             require(name.isNotBlank() && name !in listOf(".", "..") && name.length <= 120 && name.toByteArray().size <= 240 && !name.any { it == '/' || it == '\\' || it.isISOControl() }) { "文件名无效" }
             require(request.length in 0..(if (image) maxImage else maxFile)) { "文件超过大小限制" }
             if (chat) synchronized(lock) { check(storedBytes + request.length <= 512L * 1048576 && messages.size < 10000) { "聊天缓存已满" } }
+            val pending = if (chat) File(temporary, "$transferId.part")
+                else File(downloadDirectory(), ".sview-transfer-$transferId.part")
+            file = pending
+            partials.add(pending)
             val kind = if (image) "image" else "file"
             if (!chat) progress(kind, transferId, 0, false)
             val started = android.os.SystemClock.elapsedRealtime()
             var last = started
             var received = 0L
-            file.outputStream().use { output ->
+            pending.outputStream().use { output ->
                 val buffer = ByteArray(32768)
                 while (received < request.length) {
-                    check(!closed && android.os.SystemClock.elapsedRealtime() - started < 1800000) { "上传已结束或超时" }
-                    val count = request.input.read(buffer, 0, minOf(buffer.size.toLong(), request.length - received).toInt())
-                    check(count > 0) { "上传中断" }
-                    output.write(buffer, 0, count); received += count
+                    check(!closed) { "服务已关闭" }
+                    if (android.os.SystemClock.elapsedRealtime() - started >= 1800000) throw LanTransferInterruptedException()
+                    val count = LanTransferIo.read(request.input, buffer, minOf(buffer.size.toLong(), request.length - received).toInt())
+                    if (count < 0) throw LanTransferInterruptedException()
+                    output.write(buffer, 0, count)
+                    received += count
                     val now = android.os.SystemClock.elapsedRealtime()
                     if (!chat && now - last >= 1000) { progress(kind, transferId, minOf(99, (received * 100 / request.length).toInt()), false); last = now }
                 }
                 output.fd.sync()
             }
-            if (image) imageType(file)
+            if (image) imageType(pending)
             if (chat) {
-                val value = message(sender, kind, file = file, name = name)
-                partials.remove(file)
+                val value = message(sender, kind, file = pending, name = name)
+                partials.remove(pending)
+                committed = true
                 reply.json(value)
             } else {
-                val saved = saveDownload(file, name)
+                val saved = saveDownload(pending, name)
+                committed = true
                 progress(kind, transferId, 100, "device:/Download/${saved.name}")
                 reply.json(JSONObject().put("name", saved.name).put("size", saved.length()))
             }
         } catch (error: Exception) {
-            emit("error", JSONObject().put("message", error.message ?: "上传失败")); throw error
+            if (error is LanTransferInterruptedException) {
+                // 单次传输中断不等于服务故障，保留监听并通知对应上传 ID。
+                cancelled = !committed
+            } else {
+                emit("error", JSONObject().put("message", error.message ?: "上传失败"))
+                throw error
+            }
         } finally {
-            if (partials.remove(file)) file.delete()
+            file?.let { if (partials.remove(it)) it.delete() }
             upload.release()
             if (closed) temporary.deleteRecursively()
+            if (cancelled) emit("cancelled", transferId)
         }
     }
 
@@ -233,35 +249,26 @@ internal class LanSession(private val context: Context, val id: String, private 
     private fun progress(kind: String, id: String, percent: Int, path: Any) =
         emit(kind, JSONObject().put("id", id).put("percent", percent).put("path", path))
 
-    /** 同目录临时文件完成写入后再改名；多个项目之间也不会覆盖同名文件。 */
-    private fun saveDownload(source: File, name: String): File {
-        val directory = File(DeviceStorage.root(context), "Download").apply { check(isDirectory || mkdirs()) { "无法创建 Download" } }
-        val pending = File(directory, ".sview-transfer-${UUID.randomUUID()}.part")
-        partials.add(pending)
-        try {
-            source.inputStream().use { input -> pending.outputStream().use { output ->
-                val bytes = ByteArray(32768)
-                while (true) {
-                    check(!closed) { "服务已关闭" }
-                    val count = input.read(bytes); if (count < 0) break
-                    output.write(bytes, 0, count)
-                }
-                output.fd.sync()
-            } }
-            synchronized(downloadLock) {
-                synchronized(lock) {
-                    check(!closed) { "服务已关闭" }
-                    var destination = File(directory, name)
-                    var suffix = 1
-                    while (destination.exists()) {
-                        val dot = name.lastIndexOf('.').takeIf { it > 0 } ?: name.length
-                        destination = File(directory, name.take(dot) + " (${suffix++})" + name.drop(dot))
-                    }
-                    check(pending.renameTo(destination)) { "无法保存文件到 Download" }
-                    return destination
-                }
+    /** 上传服务直接写入 Download 临时文件，完成后只改名，不再复制整份文件。 */
+    private fun downloadDirectory(): File = File(DeviceStorage.root(context), "Download").apply {
+        check(isDirectory || mkdirs()) { "无法创建 Download" }
+    }
+
+    /** 与其他上传会话串行选择名称，保留同名文件并在关闭时阻止提交。 */
+    private fun saveDownload(pending: File, name: String): File = synchronized(downloadLock) {
+        synchronized(lock) {
+            check(!closed) { "服务已关闭" }
+            val directory = pending.parentFile!!
+            var destination = File(directory, name)
+            var suffix = 1
+            while (destination.exists()) {
+                val dot = name.lastIndexOf('.').takeIf { it > 0 } ?: name.length
+                destination = File(directory, name.take(dot) + " (${suffix++})" + name.drop(dot))
             }
-        } finally { partials.remove(pending); pending.delete() }
+            check(pending.renameTo(destination)) { "无法保存文件到 Download" }
+            partials.remove(pending)
+            destination
+        }
     }
 
     private fun imageType(file: File): String {

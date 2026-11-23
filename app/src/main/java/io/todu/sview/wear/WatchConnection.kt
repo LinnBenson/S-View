@@ -125,9 +125,18 @@ class WatchConnection(
             .putStringSet("expanded", expanded).putStringSet("tile-projects", tileProjects).apply()
     }
 
-    fun sync() {
+    fun sync() = beginSync(false)
+
+    /** 首页只使用已有节点状态，不发起发现、刷新或连接检查。 */
+    fun syncFromHome() = beginSync(true)
+
+    private fun beginSync(showToast: Boolean) {
         if (busy) return
-        val node = devices.find { it.id == deviceId } ?: return
+        val node = devices.find { it.id == deviceId }
+        if (node == null) {
+            if (showToast) android.widget.Toast.makeText(context, "手表未连接", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         val ids = selected.toList()
         val expandedIds = expanded.toSet()
         val tileIds = tileProjects.toSet()
@@ -143,9 +152,11 @@ class WatchConnection(
                 progress = 0f
                 transfer(node.id, archive)
                 message = "已同步 ${ids.size} 个项目"
+                if (showToast) android.widget.Toast.makeText(context, "同步完成", android.widget.Toast.LENGTH_SHORT).show()
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 message = "同步未完成：${error.message ?: "连接已断开"}"
+                if (showToast) android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
             } finally {
                 archive?.let { io.todu.sview.storage.TemporaryFiles.get(context).release(it) }
                 busy = false

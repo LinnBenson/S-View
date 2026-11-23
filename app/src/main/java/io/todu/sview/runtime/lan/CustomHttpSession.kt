@@ -108,6 +108,7 @@ internal class CustomHttpSession(
     private fun handle(request: LanHttpTransport.Request, reply: LanHttpTransport.Reply) {
         val exchange = CustomHttpExchange(directory, request.deadlineNanos)
         pending[exchange.id] = exchange
+        var cancelled = false
         try {
             check(!isClosed) { "服务器已关闭" }
             exchange.receive(request.input, request.length, bodyLimit)
@@ -119,23 +120,29 @@ internal class CustomHttpSession(
             reply.customFile(exchange.responseFile, response.status, response.headers)
         } catch (error: Exception) {
             val cause = if (error is ExecutionException) error.cause as? Exception ?: error else error
-            val timeout = cause is TimeoutException || cause is java.net.SocketTimeoutException || System.nanoTime() >= request.deadlineNanos
+            val timeout = cause is TimeoutException || cause is java.net.SocketTimeoutException || (cause is LanTransferInterruptedException && System.nanoTime() >= request.deadlineNanos)
             val status = if (timeout) 504 else (cause as? CustomHttpExchange.Failure)?.status ?: 500
             val code = if (timeout) "TIMEOUT" else (cause as? CustomHttpExchange.Failure)?.code ?: "REQUEST_FAILED"
             if (!isClosed) {
-                emit("error", JSONObject().put("message", cause.message ?: "请求处理失败").put("code", code).put("requestId", exchange.id))
+                if (timeout || cause is LanTransferInterruptedException) {
+                    // 请求级中断只取消当前请求，不作为整个服务的运行错误。
+                    cancelled = true
+                } else {
+                    emit("error", JSONObject().put("message", cause.message ?: "请求处理失败").put("code", code).put("requestId", exchange.id))
+                }
                 runCatching { if (!reply.started) reply.bytes(if (status == 413) "请求正文过大".toByteArray() else if (status == 504) "请求处理超时".toByteArray() else "请求处理失败".toByteArray(), "text/plain; charset=utf-8", status) }
             }
         } finally {
             pending.remove(exchange.id)
             emit("request-end", JSONObject().put("requestId", exchange.id))
             exchange.close()
+            if (cancelled) emit("cancelled", exchange.id)
         }
     }
 
     fun exchange(requestId: String): CustomHttpExchange = pending[requestId] ?: error("请求已结束")
 
-    private fun emit(kind: String, value: JSONObject) {
+    private fun emit(kind: String, value: Any) {
         if (!isClosed) event(JSONObject().put("id", id).put("kind", kind).put("value", value))
     }
 

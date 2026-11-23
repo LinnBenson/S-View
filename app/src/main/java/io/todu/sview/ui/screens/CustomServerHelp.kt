@@ -10,6 +10,7 @@ internal val customServerInterfaceHelp = InterfaceHelpEntry(
         InterfaceParameter("options.server", "string", false, "空字符串选择当前 Wi-Fi IPv4；10.* 按前缀选择本机网卡；完整 IPv4 必须属于本机。0.0.0.0 监听所有网卡。", "''"),
         InterfaceParameter("options.port", "number", false, "监听端口，1024–65535；不同服务使用不同端口。", "8080"),
         InterfaceParameter("options.onRequest", "function", false, "接收标准 Request，返回 Response 或 Promise<Response>。可读取 url、method、headers，并使用 text()、json()、formData()、blob()、arrayBuffer() 读取正文。request.signal 在超时或服务关闭时取消。"),
+        InterfaceParameter("options.onCancel", "function", false, "onCancel(requestId)：转交脚本的请求中断或超时时调用，不触发 onError，服务器继续运行；request.signal 会取消。"),
         InterfaceParameter("options.onError", "function", false, "接收 { message, code?, requestId? }。启动失败同时拒绝 Promise；单个请求失败不会关闭服务器。"),
         InterfaceParameter("options.onStart", "function(handle)", false, "启动成功后调用一次，参数与 Promise 返回的只读对象相同。先于启动期间排队的事件触发；启动失败不触发。回调不等待异步任务，请直接使用参数中的句柄。"),
         InterfaceParameter("options.onClose", "function", false, "主动关闭或网络失效时调用一次；启动失败不触发。"),

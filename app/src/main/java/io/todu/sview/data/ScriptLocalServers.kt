@@ -24,7 +24,7 @@ object ScriptLocalServers {
             invokeLocalServerCallback(record, item.kind, item.value);
         }
         function invokeLocalServerCallback(record, kind, value, fallback = true) {
-            const names = { started: 'onStart', message: 'onMessage', text: 'onText', file: 'onFile', image: 'onImage', error: 'onError', closed: 'onClose' };
+            const names = { started: 'onStart', message: 'onMessage', text: 'onText', file: 'onFile', image: 'onImage', cancelled: 'onCancel', error: 'onError', closed: 'onClose' };
             const callback = record.options[names[kind]];
             if (!callback) {
                 if (kind === 'error' && fallback) reportInterfaceError(value, 'network.' + (record.kind || 'server'), 'interface');
@@ -36,7 +36,7 @@ object ScriptLocalServers {
         }
         async function startLocalServer(kind, options = {}) {
             if (!options || typeof options !== 'object' || Array.isArray(options)) throw invalidArgument('需要传入配置对象');
-            for (const key of ['onStart', 'onMessage', 'onText', 'onFile', 'onImage', 'onError', 'onClose', 'onRequest']) {
+            for (const key of ['onStart', 'onMessage', 'onText', 'onFile', 'onImage', 'onCancel', 'onError', 'onClose', 'onRequest']) {
                 if (options[key] !== undefined && typeof options[key] !== 'function') throw invalidArgument(key + ' 应为函数');
             }
             for (const key of ['port', 'maxFileSizeMB', 'maxImageSizeMB', 'timeout', 'maxBodySizeMB', 'maxConcurrentRequests']) {

@@ -16,15 +16,16 @@ internal val localServerInterfaceHelp = listOf(true, false).map { chat ->
             InterfaceParameter("options.maxImageSizeMB", "number", false, "单张图片大小上限，1–512 MB。支持常见位图，不支持 SVG。", "512")
         ) + listOf(
             InterfaceParameter("options.onStart", "function(handle)", false, "启动成功后调用一次，参数与 Promise 返回的只读对象相同。先于启动期间排队的事件触发；启动失败不触发。回调不等待异步任务，请直接使用参数中的句柄。"),
+            InterfaceParameter("options.onCancel", "function", false, "onCancel(id)：文件或图片传输中断、取消或超时时调用；不会触发 onError，服务器继续运行。上传服务的 id 与进度回调一致，聊天服务的 id 为本次传输标识。"),
             InterfaceParameter("options.onClose", "function", false, "主动关闭或服务停止时调用 onClose()，每个服务只触发一次。启动失败不触发。")
         ) + if (chat) listOf(
             InterfaceParameter("options.onMessage", "function", false, "接收 { id, senderId, type, time, text, name, size, system }。type 为 text、image 或 file；time 为毫秒时间戳。不适用字段为 null。脚本 send 发送的系统消息不触发此回调。"),
-            InterfaceParameter("options.onError", "function", false, "运行或上传失败时接收 { message }。启动失败也触发此回调，并拒绝 Promise。")
+            InterfaceParameter("options.onError", "function", false, "运行、磁盘写入或文件校验失败时接收 { message }。启动失败也触发此回调，并拒绝 Promise。")
         ) else listOf(
             InterfaceParameter("options.onText", "function", false, "收到文字时调用 onText(text)。"),
             InterfaceParameter("options.onFile", "function", false, "onFile(id, percent, path)：id 为本次上传的唯一字符串，同一次上传保持不变，重新上传会生成新 ID；接收时 path 为 false；保存成功后为 onFile(id, 100, 'device:/Download/文件名')。"),
             InterfaceParameter("options.onImage", "function", false, "onImage(id, percent, path)：与文件回调相同，独立报告图片接收与保存结果。"),
-            InterfaceParameter("options.onError", "function", false, "运行或上传失败时接收 { message }；失败不会报告保存成功。启动失败也触发此回调，并拒绝 Promise。")
+            InterfaceParameter("options.onError", "function", false, "运行、磁盘写入或文件校验失败时接收 { message }；失败不会报告保存成功。启动失败也触发此回调，并拒绝 Promise。")
         ),
         resultType = "Promise<object>",
         result = "返回只读 { name, url, port, token, close${if (chat) ", send" else ""} }。url 是不含访问码的浏览器地址，token 是启动时传入的访问码。await close() 可重复调用。" +
@@ -48,6 +49,7 @@ console.log(chat.url);
   onText(text) { console.log(text); },
   onFile(id, percent, path) { console.log('文件', id, percent, path); },
   onImage(id, percent, path) { console.log('图片', id, percent, path); },
+  onCancel(id) { console.log('上传中断', id); },
   onStart(handle) { console.log('服务已启动', handle.url); },
   onError(error) { console.error(error.message); },
   onClose() { console.log('服务已关闭'); }

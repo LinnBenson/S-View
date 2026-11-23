@@ -53,6 +53,7 @@ object ScriptApi {
                 getBatteryInfo() { return call('system.getBatteryInfo', {}); }
             },
             network: {
+                interface() { return call('network.interface', {}); },
                 server: options => startLocalServer('server', options),
                 chatServer: options => startLocalServer('chatServer', options),
                 uploadServer: options => startLocalServer('uploadServer', options),

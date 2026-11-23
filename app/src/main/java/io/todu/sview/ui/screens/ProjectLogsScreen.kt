@@ -30,8 +30,8 @@ import io.todu.sview.ui.components.*
 
 /** 按项目查看持久日志；只显示末尾内容，导出保留文件中的完整记录。 */
 @Composable
-fun ProjectLogsScreen(model: WorkspaceModel, onBack: () -> Unit) {
-    var selected by remember { mutableStateOf<String?>(null) }
+fun ProjectLogsScreen(model: WorkspaceModel, initialProjectId: String? = null, onBack: () -> Unit) {
+    var selected by remember(initialProjectId) { mutableStateOf(initialProjectId) }
     var exportId by remember { mutableStateOf<String?>(null) }
     var clear by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -53,7 +53,8 @@ fun ProjectLogsScreen(model: WorkspaceModel, onBack: () -> Unit) {
         if (uri != null && id != null) model.exportLogs(id, uri)
         exportId = null
     }
-    fun back() { if (selected != null) { selected = null; query = "" } else onBack() }
+    // 从项目菜单进入时直接返回首页；从设置进入时保留项目列表层级。
+    fun back() { if (initialProjectId == null && selected != null) { selected = null; query = "" } else onBack() }
     BackHandler(selected != null) { back() }
     Column(Modifier.fillMaxSize()) {
         PageHeader(project?.name ?: "项目日志", ::back) {

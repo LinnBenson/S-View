@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,7 +39,10 @@ import io.todu.sview.ui.components.*
 @Composable
 fun HomeScreen(projects: List<Project>, categories: List<String>, wide: Boolean, onRun: (Project) -> Unit, onEdit: (Project) -> Unit, onProjectSettings: (Project) -> Unit,
     onUpdate: (Project) -> Unit, onDelete: (Project) -> Unit, onCreate: () -> Unit, onImport: () -> Unit,
-    onSettings: () -> Unit, onCategories: () -> Unit, onReorder: (String, String) -> Unit, onReorderFinished: () -> Unit, onClearCache: (Project) -> Unit, onExport: (Project) -> Unit) {
+    onSettings: () -> Unit, onCategories: () -> Unit, onReorder: (String, String) -> Unit, onReorderFinished: () -> Unit, onClearCache: (Project) -> Unit, onExport: (Project) -> Unit,
+    watchSyncBusy: Boolean, onWatchSync: () -> Unit,
+    ftpEditorRunning: Boolean, lanEditorRunning: Boolean, onFtpEditor: () -> Unit, onLanEditor: () -> Unit,
+    onViewLogs: (Project) -> Unit) {
     val compact = LocalConfiguration.current.screenWidthDp < 300
     var query by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<Project?>(null) }
@@ -50,10 +55,22 @@ fun HomeScreen(projects: List<Project>, categories: List<String>, wide: Boolean,
     LaunchedEffect(pager.currentPage) { tabs.animateScrollToItem(pager.currentPage) }
     Column(Modifier.fillMaxSize()) {
         PageHeader("项目", showDivider = false, titleContent = if (wide) null else ({ SViewMark() })) {
+            // 同步期间保持按钮占位，只显示不带进度的加载状态。
+            if (watchSyncBusy) {
+                Box(Modifier.size(44.dp).semantics { contentDescription = "正在同步手表" }, contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(22.dp), color = Muted, strokeWidth = 2.dp)
+                }
+            } else IconAction("folder-sync", "同步手表", onWatchSync)
             IconAction("import", "导入项目", onImport)
             IconAction("plus", "创建项目", onCreate)
         }
         Column(Modifier.weight(1f).padding(horizontal = if (compact) 4.dp else 24.dp)) {
+            if (ftpEditorRunning || lanEditorRunning) {
+                Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (ftpEditorRunning) EditorRunningNotice("FTP 编辑器已启用！", onFtpEditor)
+                    if (lanEditorRunning) EditorRunningNotice("局域网编辑器已启用！", onLanEditor)
+                }
+            }
             Spacer(Modifier.height(12.dp))
             BasicTextField(query, { query = it }, Modifier.fillMaxWidth().height(44.dp).background(Panel, RoundedCornerShape(12.dp)),
                 singleLine = true, textStyle = TextStyle(color = Ink, fontSize = 14.sp), decorationBox = { field ->
@@ -106,7 +123,7 @@ fun HomeScreen(projects: List<Project>, categories: List<String>, wide: Boolean,
                                     val lifted = drag.dragging == project.id
                                     val moving = lifted || drag.settling == project.id
                                     val scale by animateFloatAsState(if (lifted) 1.045f else 1f, spring(dampingRatio = .8f, stiffness = 500f), label = "卡片抬起")
-                                    ProjectCard(project, onRun, onEdit, onProjectSettings, onUpdate, { pendingDelete = it }, onExport, { pendingClearCache = it },
+                                    ProjectCard(project, onRun, onEdit, onProjectSettings, onUpdate, { pendingDelete = it }, onExport, { pendingClearCache = it }, onViewLogs,
                                         Modifier.animateItem(placementSpec = if (moving) null else spring(dampingRatio = .85f, stiffness = 450f))
                                             .zIndex(if (moving) 1f else 0f).graphicsLayer {
                                                 val offset = drag.offset(project.id)
@@ -153,7 +170,8 @@ fun HomeScreen(projects: List<Project>, categories: List<String>, wide: Boolean,
 
 @Composable
 private fun ProjectCard(project: Project, onRun: (Project) -> Unit, onEdit: (Project) -> Unit, onProjectSettings: (Project) -> Unit,
-    onUpdate: (Project) -> Unit, onDelete: (Project) -> Unit, onExport: (Project) -> Unit, onClearCache: (Project) -> Unit, modifier: Modifier) {
+    onUpdate: (Project) -> Unit, onDelete: (Project) -> Unit, onExport: (Project) -> Unit, onClearCache: (Project) -> Unit,
+    onViewLogs: (Project) -> Unit, modifier: Modifier) {
     var menu by remember { mutableStateOf(false) }
     Box(modifier.height(80.dp).background(CardColors[project.color.coerceIn(CardColors.indices)], RoundedCornerShape(12.dp)).clickable { onRun(project) }) {
         AppIcon(project.icon, modifier = Modifier.padding(start = 14.dp, top = 13.dp).size(20.dp), tint = Ink.copy(alpha = .65f))
@@ -166,9 +184,23 @@ private fun ProjectCard(project: Project, onRun: (Project) -> Unit, onEdit: (Pro
                 ActionMenuItem("项目设置", "settings-2", { menu = false; onProjectSettings(project) })
                 ActionMenuItem(if (project.pinned) "取消置顶" else "置顶", "pin", { menu = false; onUpdate(project.copy(pinned = !project.pinned)) })
                 ActionMenuItem("导出", "upload", { menu = false; onExport(project) })
+                ActionMenuItem("查看日志", "terminal", { menu = false; onViewLogs(project) })
                 ActionMenuItem("清除缓存", "brush", { menu = false; onClearCache(project) })
                 ActionMenuItem("删除", "trash", { menu = false; onDelete(project) }, destructive = true)
             }
+        }
+    }
+}
+
+/** 服务启用时提供直接入口，显示状态完全由已有控制器驱动。 */
+@Composable
+private fun EditorRunningNotice(text: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), color = Blue.copy(alpha = .07f)) {
+        Row(Modifier.heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            AppIcon("screen-share", modifier = Modifier.size(20.dp), tint = Blue)
+            Spacer(Modifier.width(10.dp))
+            Text(text, Modifier.weight(1f), color = Blue, fontSize = 13.sp)
+            AppIcon("chevron-right", modifier = Modifier.size(18.dp), tint = Blue)
         }
     }
 }

@@ -31,9 +31,9 @@ internal class CustomHttpExchange(directory: File, private val deadline: Long) :
             var received = 0L
             while (length < 0 || received < length) {
                 ensureTime()
-                val count = input.read(bytes, 0, if (length < 0) bytes.size else minOf(bytes.size.toLong(), length - received).toInt())
+                val count = LanTransferIo.read(input, bytes, if (length < 0) bytes.size else minOf(bytes.size.toLong(), length - received).toInt())
                 if (count < 0 && length < 0) break
-                check(count > 0) { "请求内容不完整" }
+                if (count < 0) throw LanTransferInterruptedException()
                 received += count
                 if (received > limit) throw Failure(413, "PAYLOAD_TOO_LARGE", "请求正文超过大小限制")
                 output.write(bytes, 0, count)

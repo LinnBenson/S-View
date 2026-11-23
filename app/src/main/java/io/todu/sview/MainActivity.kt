@@ -119,6 +119,7 @@ open class MainActivity : ComponentActivity() {
     @Composable
     private fun Workspace() {
         var page by remember { mutableStateOf("home") }
+        var homeLogProjectId by remember { mutableStateOf<String?>(null) }
         var running by remember { mutableStateOf<Project?>(null) }
         var released by remember { mutableStateOf(RunLifetime().apply { released.complete(Unit) }) }
         val runScope = rememberCoroutineScope()
@@ -217,8 +218,9 @@ open class MainActivity : ComponentActivity() {
                         if (wide && page in listOf("home", "settings", "permissions", "interfaces", "categories")) Column(Modifier.width(72.dp).fillMaxHeight().background(Panel), horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(Modifier.fillMaxWidth().height(76.dp), contentAlignment = Alignment.Center) { SViewMark() }
                             IconAction("folders", "项目", { page = "home" }, tint = if (page in listOf("home", "categories")) Blue else Muted)
+                            IconAction("code", "系统接口", { page = "interfaces" }, tint = if (page == "interfaces") Blue else Muted)
                             Spacer(Modifier.weight(1f))
-                            IconAction("settings-2", "设置", { page = "settings" }, Modifier.padding(bottom = 20.dp), tint = if (page in listOf("settings", "permissions", "interfaces")) Blue else Muted)
+                            IconAction("settings-2", "设置", { page = "settings" }, Modifier.padding(bottom = 20.dp), tint = if (page in listOf("settings", "permissions")) Blue else Muted)
                         }
                         Box(Modifier.weight(1f)) {
                             if (!model.ready) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -232,6 +234,7 @@ open class MainActivity : ComponentActivity() {
                                 "ftp" -> LanEditorScreen(model.ftpEditor, ftp = true) { page = "settings" }
                                 "interfaces" -> SystemInterfacesScreen(onBack = { page = "settings" })
                                 "logs" -> ProjectLogsScreen(model) { page = "settings" }
+                                "project-logs" -> ProjectLogsScreen(model, initialProjectId = homeLogProjectId) { page = "home" }
                                 "permissions" -> PermissionsScreen { page = "settings" }
                                 "categories" -> CategoriesScreen(model) { page = "home" }
                                 "editor", "templates" -> EditorScreen(model, wide, page == "templates", 13, ::back,
@@ -242,7 +245,10 @@ open class MainActivity : ComponentActivity() {
                                     { projectImport.launch(arrayOf("text/html", "text/javascript", "application/javascript", "text/plain", "application/zip", "application/x-zip-compressed", "application/octet-stream")) }, { page = "settings" }, { page = "categories" }, model::reorder, model::saveProjectOrder, { project -> model.clearProjectCaches(project) }, { project ->
                                         exportProjectId = project.id
                                         projectExport.launch(project.name.replace(Regex("[\\\\/:*?\"<>|]"), "_") + ".zip")
-                                    })
+                                    }, watchSyncBusy = model.watchConnection.busy, onWatchSync = model.watchConnection::syncFromHome,
+                                    ftpEditorRunning = model.ftpEditor.running, lanEditorRunning = model.lanEditor.running,
+                                    onFtpEditor = { page = "ftp" }, onLanEditor = { page = "lan" },
+                                    onViewLogs = { project -> homeLogProjectId = project.id; page = "project-logs" })
                             }
                         }
                     }
