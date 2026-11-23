@@ -577,7 +577,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
         check(io.todu.sview.wear.WatchDevice.isWatch(getApplication()))
         stopWatchRun?.invoke()
         logWriter.flush()
-        BrowserEngine.clearAll(getApplication())
+        // 同步只更新工作区，保留浏览器数据；网页数据仍由手动清除缓存入口清理。
         io {
             // 同步只替换资源；仍保留的项目继续使用原有运行日志。
             incoming.forEach { project ->
