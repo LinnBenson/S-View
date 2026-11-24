@@ -85,7 +85,11 @@ class LanWorkspace(private val repository: ProjectRepository, private val cache:
                 ScriptVariable(it.getString("name"), it.getString("type"), it.getString("value"))
             } }.also(ProjectVariables::validate)
         } else base.variables
-        return base.copy(variables = variables, name = name, category = json.optString("category", base.category),
+        val shareSource = if (json.has("shareSource")) {
+            val value = json.getString("shareSource")
+            ShareSource.entries.firstOrNull { it.value == value } ?: error("共享来源无效")
+        } else base.shareSource
+        return base.copy(variables = variables, shareSource = shareSource, name = name, category = json.optString("category", base.category),
             width = WindowDimension.parse(json.optString("width", base.width.format())),
             height = WindowDimension.parse(json.optString("height", base.height.format())),
             location = WindowLocation.parse(json.optString("location", base.location.value)),

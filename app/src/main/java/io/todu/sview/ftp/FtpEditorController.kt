@@ -4,14 +4,13 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.todu.sview.lan.LocalEditorAddresses
 import io.todu.sview.lan.LanPasswordStore
 import io.todu.sview.lan.LocalEditorController
 import io.todu.sview.wear.WatchDevice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.Inet4Address
-import java.net.NetworkInterface
 
 /** 仅手机按需创建 FTP 服务；退出前台后关闭全部控制连接和数据连接。 */
 class FtpEditorController(private val context: Context, private val access: (FtpRequest) -> FtpResult) : LocalEditorController {
@@ -43,11 +42,7 @@ class FtpEditorController(private val context: Context, private val access: (Ftp
             val port = portText.toIntOrNull()
             require(port != null && port in 1024..65535) { "端口应为 1024 到 65535" }
             require(password.length in 4..128 && password.none { it < ' ' }) { "访问密码应为 4 到 128 个可见字符" }
-            val hosts = withContext(Dispatchers.IO) {
-                NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
-                    .flatMap { it.inetAddresses.toList() }.filterIsInstance<Inet4Address>()
-                    .filter { it.isSiteLocalAddress }.distinct()
-            }
+            val hosts = withContext(Dispatchers.IO) { LocalEditorAddresses.hosts() }
             require(hosts.isNotEmpty()) { "请先连接 Wi-Fi 或开启热点" }
             withContext(Dispatchers.IO) {
                 LanPasswordStore(context, "ftp-password").save(password)

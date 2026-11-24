@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 import java.io.BufferedInputStream
 import java.io.Closeable
+import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -17,11 +18,12 @@ import java.util.concurrent.TimeUnit
 /** 手动启动的 HTTP 服务。密码只用于登录，后续请求使用本次启动生成的会话令牌。 */
 class LanHttpServer(
     private val context: Context,
+    hosts: List<Inet4Address>,
     port: Int,
     private val password: String,
     private val dispatch: (String, JSONObject) -> LanResponse
 ) : Closeable {
-    private val server = ServerSocket()
+    private val listeners = mutableListOf<ServerSocket>()
     private val workers = ThreadPoolExecutor(2, 2, 20, TimeUnit.SECONDS, ArrayBlockingQueue<Runnable>(8))
     private val sockets = ConcurrentHashMap.newKeySet<Socket>()
     private val sessions = ConcurrentHashMap<String, Long>()
@@ -30,17 +32,24 @@ class LanHttpServer(
 
     init {
         try {
-            server.reuseAddress = true
-            server.bind(InetSocketAddress(port), 8)
+            hosts.forEach { host ->
+                val listener = ServerSocket()
+                listeners.add(listener)
+                listener.reuseAddress = true
+                listener.bind(InetSocketAddress(host, port), 8)
+            }
             workers.allowCoreThreadTimeOut(true)
-            Thread(::accept, "局域网编辑器").apply { isDaemon = true; start() }
+            listeners.forEach { listener ->
+                Thread({ accept(listener) }, "局域网编辑器").apply { isDaemon = true; start() }
+            }
         } catch (error: Exception) { close(); throw error }
     }
 
-    private fun accept() {
+    private fun accept(listener: ServerSocket) {
         while (running) {
             try {
-                val socket = server.accept()
+                val socket = listener.accept()
+                if (!running) { socket.close(); break }
                 sockets.add(socket)
                 try { workers.execute { socket.use { serve(it) }; sockets.remove(socket) } }
                 catch (_: java.util.concurrent.RejectedExecutionException) { sockets.remove(socket); socket.close() }
@@ -77,7 +86,7 @@ class LanHttpServer(
             require(request[0] == "POST" && path.startsWith("/api/")) { "接口不存在" }
             val host = headers["host"].orEmpty()
             // 只接受直连本机地址，避免 DNS 重绑定借用编辑器的登录状态。
-            val localHost = "${socket.localAddress.hostAddress}:${server.localPort}"
+            val localHost = "${socket.localAddress.hostAddress}:${socket.localPort}"
             require(host == localHost && headers["origin"] == "http://$host" && headers["x-sview-editor"] == "1") { "请求来源无效" }
             require(headers["content-type"]?.substringBefore(';') == "application/json")
             val length = headers["content-length"]?.toIntOrNull() ?: 0
@@ -143,7 +152,7 @@ class LanHttpServer(
 
     override fun close() {
         running = false
-        runCatching { server.close() }
+        listeners.forEach { runCatching { it.close() } }
         sockets.forEach { runCatching { it.close() } }
         sockets.clear(); sessions.clear()
         // 先关闭连接；已提交的事务完成回滚/落盘后，响应的 use 负责释放快照。

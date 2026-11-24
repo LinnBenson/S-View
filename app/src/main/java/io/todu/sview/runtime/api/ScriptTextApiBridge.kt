@@ -59,15 +59,15 @@ internal class ScriptTextApiBridge {
         } catch (_: WriterException) {
             throw IllegalArgumentException("内容无法编码为二维码")
         }
-        // 长内容至少保留每模块两像素，避免密集二维码难以识别。
-        val scale = maxOf(2, 256 / matrix.width)
-        val size = maxOf(256, matrix.width * scale)
-        val offset = (size - matrix.width * scale) / 2
+        // 向上取整模块像素数，达到最小尺寸即可，不再通过外层补白凑足 256 像素。
+        // 长内容仍至少保留每模块两像素，避免密集二维码难以识别。
+        val scale = maxOf(2, (256 + matrix.width - 1) / matrix.width)
+        val size = matrix.width * scale
         val pixels = IntArray(size * size) { Color.WHITE }
         for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
             if (!matrix[x, y]) continue
             for (dy in 0 until scale) {
-                val start = (offset + y * scale + dy) * size + offset + x * scale
+                val start = (y * scale + dy) * size + x * scale
                 java.util.Arrays.fill(pixels, start, start + scale, Color.BLACK)
             }
         }

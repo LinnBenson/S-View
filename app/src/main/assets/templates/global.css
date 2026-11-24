@@ -14,22 +14,20 @@
     --radius: 12px;
 }
 /* 手表端样式优化 */
-@media ( min-width: 220px ) and ( max-width: 240px ) {
-    :root {
-        --r0: 0, 0, 0;
-        --r1: 225, 225, 225;
-        --r2: 65, 115, 179;
-        --r2c: var( --r1 );
-        --r3: 53, 75, 111;
-        --r3c: var( --r1 );
-        --r4: 52, 168, 83;
-        --r4c: var( --r1 );
-        --r5: 207, 99, 89;
-        --r5c: var( --r1 );
-        --r6: 51, 52, 59;
-        --font: 14px;
-        --radius: 12px;
-    }
+:root[iswatch] {
+    --r0: 0, 0, 0;
+    --r1: 225, 225, 225;
+    --r2: 65, 115, 179;
+    --r2c: var( --r1 );
+    --r3: 53, 75, 111;
+    --r3c: var( --r1 );
+    --r4: 52, 168, 83;
+    --r4c: var( --r1 );
+    --r5: 207, 99, 89;
+    --r5c: var( --r1 );
+    --r6: 51, 52, 59;
+    --font: 14px;
+    --radius: 12px;
 }
 * {
     --fontSize: var( --font, 15px );
@@ -69,8 +67,8 @@ hr {
     border: none;
     border-bottom: var( --size ) dashed rgb( var( --r1 ), 0.75 );
 }
-input, textarea { font-size: 16px !important; }
-input::placeholder, textarea::placeholder { font-size:  var( --fontSize ) !important; }
+input, textarea, select { font-size: var( --fontSize ); }
+input::placeholder, textarea::placeholder { font-size: var( --fontSize ) !important; }
 input:focus, textarea:focus, select:focus { outline: none; }
 body {
     background: rgb( var( --r0 ) );
@@ -296,19 +294,17 @@ main#app {
     to { opacity: 1; transform: translateY( 0 ); }
 }
 /* 手表端样式优化 */
-@media ( min-width: 220px ) and ( max-width: 240px ) {
-    main#app {
-        padding: 20px;
-    }
-    [box] {
-        margin-bottom: 12px;
-    }
-    [card] {
-        --padding: 10px;
-        margin-bottom: 12px;
-    }
-    [item] {
-        --padding: 10px;
-        margin-bottom: 8px;
-    }
+[iswatch] main#app {
+    padding: 20px;
+}
+[iswatch] [box] {
+    margin-bottom: 12px;
+}
+[iswatch] [card] {
+    --padding: 10px;
+    margin-bottom: 12px;
+}
+[iswatch] [item] {
+    --padding: 10px;
+    margin-bottom: 8px;
 }

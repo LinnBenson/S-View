@@ -8,13 +8,16 @@
         android:importantForAccessibility="no" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
         android:gravity="center" android:orientation="vertical" android:padding="5dp">
+        <!-- 只缩放绘制结果，保留图标占位和下方文字的位置。 -->
         <ImageView android:id="@+id/widget_icon"
-            android:layout_width="26dp" android:layout_height="26dp"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:minWidth="26dp" android:minHeight="26dp" android:scaleType="fitCenter"
+            android:scaleX="0.88" android:scaleY="0.88"
             android:src="@drawable/lucide_code" android:tint="#626C7C"
             android:importantForAccessibility="no" />
         <TextView android:id="@+id/widget_name"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="5dp" android:gravity="center"
+            android:paddingTop="8dp" android:letterSpacing="0.04" android:gravity="center"
             android:maxLines="1" android:ellipsize="end" android:textColor="#192338" android:textSize="11sp" />
     </LinearLayout>
 </FrameLayout>

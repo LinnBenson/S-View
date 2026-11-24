@@ -258,6 +258,7 @@
                 ensureActive();
                 const prepared = prepare();
                 if (prepared && ['GET', 'HEAD'].includes(config.method)) throw invalidArgument('GET 和 HEAD 不能设置请求体');
+                config.responseType = responseType;
                 config.url = url.href;
                 config.headers = Object.fromEntries(headers.entries());
                 config.hasBody = Boolean(prepared);
@@ -278,7 +279,7 @@
                 const metadata = await (await bridge(id + '/meta', undefined, controller.signal)).json();
                 const successful = metadata.status >= 200 && metadata.status < 300;
                 const result = { status: metadata.status, headers: metadata.headers, url: metadata.url,
-                    data: null, isJson: () => false, isFifle: () => fileResponse(metadata.headers) };
+                    data: null, isJson: () => false, isFile: () => fileResponse(metadata.headers) };
                 if (config.download && successful) {
                     while (true) {
                         const response = await bridge(id + '/read', undefined, controller.signal);
@@ -286,7 +287,7 @@
                         notify(downloadCallback, loaded, Number(response.headers.get('X-SView-Total')));
                         await response.arrayBuffer();
                         if (response.headers.get('X-SView-End') === 'true') {
-                            result.isFifle = () => true;
+                            result.isFile = () => true;
                             result.path = metadata.downloadPath || config.download;
                             result.size = loaded;
                             break;

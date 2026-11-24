@@ -101,7 +101,7 @@ const result = await sview.network
     InterfaceHelpEntry(
         name = "sview.network.request().send",
         brief = "读取结果、JSON 或下载文件",
-        summary = "默认返回 { status, headers, url, data, isJson, isFifle }。isJson() 实际检查响应文本是否为合法 JSON，不依赖 Content-Type。合法对象和数组自动转换为 JS 对象和数组，不额外包裹。",
+        summary = "默认返回 { status, headers, url, data, isJson, isFile }。isJson() 实际检查响应文本是否为合法 JSON，不依赖 Content-Type。合法对象和数组自动转换为 JS 对象和数组，不额外包裹。",
         parameters = listOf(
             InterfaceParameter("send()", "无参数", false, "返回 Promise；重复调用返回同一 Promise。"),
             InterfaceParameter("download(path)", "string", false, "普通路径保存到项目目录；device:/ 开头保存到设备主共享存储，需先在设置 → 权限中允许设备存储访问。单级路径、已有目录或以 / 结尾的路径自动采用响应头文件名，其次 URL 文件名，无可用名称时使用 download。多级新目录请以 / 结尾。可写 device:/Download/a.zip 指定文件。目录名区分大小写，不覆盖已有文件；失败或取消会清理临时文件。系统保护目录仍不可写。"),
@@ -113,13 +113,13 @@ const result = await sview.network
             InterfaceResultField("url", "string", "最终响应地址，包含重定向后的地址。"),
             InterfaceResultField("data", "依 response(type) 而定", "auto：合法 JSON 转为对象、数组或对应的原始值，否则为字符串。json：解析后的 JSON 值，不合法则拒绝。text：始终为字符串。blob：Blob。arrayBuffer：ArrayBuffer。stream：ReadableStream<Uint8Array>。download(path) 成功时为 null。空正文在 auto/text 中是空字符串，在 json 中拒绝。"),
             InterfaceResultField("isJson()", "() => boolean", "无参数。auto/json/text 实际解析完整正文判断，合法 JSON 返回 true，空正文或非法 JSON 返回 false。对象、数组、null、数字、布尔值和 JSON 字符串均为合法 JSON。blob、arrayBuffer、stream、落盘下载不预读正文，返回 false。"),
-            InterfaceResultField("isFifle()", "() => boolean", "无参数，方法名为 isFifle。download(path) 成功落盘返回 true；其他模式依据响应头中的 attachment、filename 或常见文件 MIME 判断，例如图片、音视频、字体、PDF、压缩包、Office 文档、APK。普通 JSON/文本且没有附件声明返回 false。缺失或错误的响应头可能无法准确识别；不根据 URL 后缀猜测，不读取或校验文件内容。选择 blob/stream 本身不代表文件。判断不会改变 data 类型，文本附件可能同时满足 isJson() 和 isFifle()。"),
+            InterfaceResultField("isFile()", "() => boolean", "无参数。download(path) 成功落盘返回 true；其他模式依据响应头中的 attachment、filename 或常见文件 MIME 判断，例如图片、音视频、字体、PDF、压缩包、Office 文档、APK。普通 JSON/文本且没有附件声明返回 false。缺失或错误的响应头可能无法准确识别；不根据 URL 后缀猜测，不读取或校验文件内容。选择 blob/stream 本身不代表文件。判断不会改变 data 类型，文本附件可能同时满足 isJson() 和 isFile()。"),
             InterfaceResultField("path", "string | undefined", "仅 download(path) 成功时存在。项目下载返回传入路径，设备下载返回包含实际文件名的 device:/ 路径。设备路径可直接赋给 img.src 或 a.href，由运行环境映射图片或打开文件；其他网页 URL 属性不会自动转换。"),
             InterfaceResultField("size", "number | undefined", "仅 download(path) 成功时存在，表示实际落盘字节数，0 表示空文件。其他模式没有此字段；可按需读取 Blob.size 或 ArrayBuffer.byteLength。")
         ),
         resultType = "Promise<NetworkResult>",
         result = "默认 data 是解析后的 JSON 值或原始文本；text 模式保持文本但仍可判断 isJson()。stream 模式 data 为 ReadableStream。文件下载返回 path、size，data 为 null。headers 的键为小写，同名响应头合并显示。",
-        failure = "HTTP 非 2xx 拒绝，error.status 为状态码，error.response 保留 status、headers、url、data、isJson() 和 isFifle()；没有落盘文件。连接失败等未取得响应的错误通常没有 response。TIMEOUT 为超时，CANCELLED 为取消，NETWORK_ERROR 为连接或传输错误，INVALID_JSON 为强制 JSON 解析失败。",
+        failure = "HTTP 非 2xx 拒绝，error.status 为状态码，error.response 保留 status、headers、url、data、isJson() 和 isFile()；没有落盘文件。连接失败等未取得响应的错误通常没有 response。TIMEOUT 为超时，CANCELLED 为取消，NETWORK_ERROR 为连接或传输错误，INVALID_JSON 为强制 JSON 解析失败。",
         example = """const result = await sview.network
     .request('https://example.com/api/items')
     .send();
@@ -134,7 +134,7 @@ const file = await sview.network
         console.log(percent);
     })
     .send();
-console.log(file.isFifle()); // 成功落盘为 true
+console.log(file.isFile()); // 成功落盘为 true
 console.log(file.path, file.size);""",
         note = "大文件建议使用 download() 或 response('stream')。auto、json、text、blob 和 arrayBuffer 最终需要在 JS 中保留完整结果。流返回后仍可发生超时或网络错误，读取流时也需要捕获异常。",
         category = "网络"

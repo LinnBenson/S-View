@@ -4,16 +4,18 @@ import org.json.JSONObject
 
 /** 保存时生成运行入口；变量和日志桥先于用户引用执行。 */
 object RuntimeDocument {
-    const val REVISION = 27
+    const val REVISION = 30
 
-    fun render(project: Project, source: String, entry: Boolean = true): String {
+    fun render(project: Project, source: String, isWatch: Boolean, entry: Boolean = true): String {
+        // 在浏览器解析前替换属性标记，源模板保持原样，跨设备同步后重新生成。
+        val deviceSource = source.replace(ReferenceTemplate.IS_WATCH_PLACEHOLDER, if (isWatch) "iswatch" else "")
         val variables = JSONObject()
         project.variables.forEach { variables.put(it.name, it.jsonValue()) }
         val data = variables.toString().replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
         val injection = "<script src=\"/__sview_runtime.js?v=$REVISION\"></script>"
         val variablesScript = if (project.variables.isEmpty()) "" else "<script>Object.assign(globalThis,$data);</script>"
-        val html = if (entry) ReferenceTemplate.render(source, project.references)
-            .replace(ReferenceTemplate.VARIABLES_PLACEHOLDER, variablesScript) else source
+        val html = if (entry) ReferenceTemplate.render(deviceSource, project.references)
+            .replace(ReferenceTemplate.VARIABLES_PLACEHOLDER, variablesScript) else deviceSource
         val head = Regex("<head(?:\\s[^>]*)?>", RegexOption.IGNORE_CASE).find(html)
         return if (head == null) injection + html else html.substring(0, head.range.last + 1) + injection + html.substring(head.range.last + 1)
     }
@@ -23,8 +25,18 @@ object RuntimeDocument {
 
     private const val CONSOLE_SCRIPT = """(() => {
             let queue = [], queuedCharacters = 0, timer, pending;
+            // Gecko 的堆栈不包含错误消息；分别读取，避免自定义 getter 让日志再次抛错。
+            function formatError(value) {
+                let name = 'Error', message = '', stack = '';
+                try { name = String(value.name || name); } catch (_) { }
+                try { message = String(value.message ?? ''); } catch (_) { }
+                try { stack = typeof value.stack === 'string' ? value.stack : ''; } catch (_) { }
+                const title = message ? name + ': ' + message : name;
+                if (!stack) return title;
+                return stack.split('\n', 1)[0] === title ? stack : title + '\n' + stack;
+            }
             function format(value) {
-                if (value instanceof Error) return value.stack || value.message;
+                if (value instanceof Error) return formatError(value);
                 try { return typeof value === 'object' ? JSON.stringify(value) : String(value); }
                 catch { return String(value); }
             }

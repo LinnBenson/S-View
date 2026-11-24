@@ -1,6 +1,10 @@
 package io.todu.sview.wear.tile
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.Typeface
 import androidx.compose.ui.graphics.toArgb
 import androidx.wear.protolayout.ActionBuilders.*
 import androidx.wear.protolayout.ColorBuilders.argb
@@ -20,40 +24,41 @@ internal object WatchTileLayout {
     private const val INK = 0xFF263247.toInt()
     private const val WHITE = 0xFFF0F2F8.toInt()
 
+    @SuppressLint("RestrictedApi") // 方向常量在当前依赖中标为库内 API，公开的方向设置方法需要这些值。
     fun create(context: Context, projects: List<Project>, token: String, screenSize: Float, fontScale: Float): LayoutElement {
         val size = (screenSize - 8f).coerceAtLeast(120f)
         val thickness = min(54f, size * .28f)
-        val root = Box.Builder().setWidth(dp(size)).setHeight(dp(size))
+        val root = centeredBox(size)
         if (projects.isNotEmpty()) {
             val angle = 360f / projects.size
             projects.forEachIndexed { index, project ->
                 val center = index * angle + angle / 2f
                 val click = projectClick(context, project.id, token)
                 val semantics = Semantics.Builder().setContentDescription(project.name).build()
-                root.addContent(Arc.Builder().setAnchorAngle(degrees(center)).setAnchorType(ARC_ANCHOR_CENTER)
+                root.addContent(centeredArc(center)
                     .addContent(ArcLine.Builder().setLength(degrees(angle)).setThickness(dp(thickness))
                         .setStrokeCap(STROKE_CAP_BUTT)
                         .setColor(argb(CardColors[project.color.coerceIn(CardColors.indices)].toArgb()))
                         .setModifiers(ArcModifiers.Builder().setClickable(click).setSemantics(semantics).build()).build())
                     .build())
-                // 文字单独沿外圈弯曲，按可用弧长截短，避免侵入相邻扇区。
+                // 下半圈反向走弧，让字形保持正立；扇区位置始终按顺时针角度定位。
+                val clockwise = center <= 90f || center >= 270f
                 val textDiameter = size - 12f
-                val textRadius = textDiameter / 2f - 6f * fontScale
-                val textWidth = textRadius * Math.toRadians((angle - 12f).toDouble()).toFloat()
-                val paint = TextPaint().apply { textSize = 10f * fontScale }
-                val title = TextUtils.ellipsize(project.name, paint, textWidth, TextUtils.TruncateAt.END).toString()
-                root.addContent(Box.Builder().setWidth(dp(textDiameter)).setHeight(dp(textDiameter))
-                    .addContent(Arc.Builder().setAnchorAngle(degrees(center)).setAnchorType(ARC_ANCHOR_CENTER)
-                        .addContent(ArcText.Builder().setText(title)
-                            .setFontStyle(FontStyle.Builder().setSize(sp(10f)).setColor(argb(INK)).build())
+                val title = titlePlacement(context, project.name, textDiameter, angle, center, fontScale, clockwise)
+                root.addContent(centeredBox(textDiameter)
+                    .addContent(centeredArc(title.angle)
+                        .addContent(ArcText.Builder().setText(title.text)
+                            .setArcDirection(if (clockwise) ARC_DIRECTION_CLOCKWISE else ARC_DIRECTION_COUNTER_CLOCKWISE)
+                            .setFontStyle(FontStyle.Builder().setSize(sp(10f)).setColor(argb(INK))
+                                .setPreferredFontFamilies(FontStyle.ROBOTO_FONT).setWeight(FONT_WEIGHT_NORMAL).build())
                             .setModifiers(ArcModifiers.Builder().setClickable(click).setSemantics(semantics).build()).build())
                         .build()).build())
                 // 图标放在文字内侧，仍沿扇区方向旋转。
                 val iconDiameter = size - thickness * .95f
                 val icon = Image.Builder().setResourceId(project.icon).setWidth(dp(20f)).setHeight(dp(20f))
                     .setModifiers(Modifiers.Builder().setClickable(click).setSemantics(semantics).build()).build()
-                root.addContent(Box.Builder().setWidth(dp(iconDiameter)).setHeight(dp(iconDiameter))
-                    .addContent(Arc.Builder().setAnchorAngle(degrees(center)).setAnchorType(ARC_ANCHOR_CENTER)
+                root.addContent(centeredBox(iconDiameter)
+                    .addContent(centeredArc(center)
                         .addContent(ArcAdapter.Builder().setRotateContents(true).setContent(icon).build()).build()).build())
             }
         }
@@ -61,8 +66,7 @@ internal object WatchTileLayout {
         if (projects.size > 1) repeat(projects.size) { index ->
             val divider = Box.Builder().setWidth(dp(3f)).setHeight(dp(thickness))
                 .setModifiers(Modifiers.Builder().setBackground(Background.Builder().setColor(argb(0xFF000000.toInt())).build()).build()).build()
-            root.addContent(Arc.Builder().setAnchorAngle(degrees(index * 360f / projects.size))
-                .setAnchorType(ARC_ANCHOR_CENTER)
+            root.addContent(centeredArc(index * 360f / projects.size)
                 .addContent(ArcAdapter.Builder().setRotateContents(true).setContent(divider).build()).build())
         }
         val home = Clickable.Builder().setId("home").setOnClick(LaunchAction.Builder().setAndroidActivity(
@@ -76,6 +80,37 @@ internal object WatchTileLayout {
             .setHeight(dp(if (projects.isEmpty()) size * .7f else size - thickness * 2f - 8f))
             .setModifiers(Modifiers.Builder().setClickable(home).setSemantics(Semantics.Builder().setContentDescription("打开 S View").build()).build()).addContent(middle.build()).build())
         return root.build()
+    }
+
+    /** 所有同心层显式共用中心，不依赖宿主的默认布局方向和对齐方式。 */
+    private fun centeredBox(size: Float): Box.Builder = Box.Builder().setWidth(dp(size)).setHeight(dp(size))
+        .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER).setVerticalAlignment(VERTICAL_ALIGN_CENTER)
+
+    @SuppressLint("RestrictedApi")
+    private fun centeredArc(angle: Float): Arc.Builder = Arc.Builder().setAnchorAngle(degrees(angle))
+        .setAnchorType(ARC_ANCHOR_CENTER).setArcDirection(ARC_DIRECTION_CLOCKWISE)
+
+    private data class TitlePlacement(val text: String, val angle: Float)
+
+    /** 用像素测量最终标题，并抵消弧形控件未计入的字形左侧偏移。 */
+    private fun titlePlacement(
+        context: Context, name: String, diameter: Float, sectorAngle: Float,
+        center: Float, fontScale: Float, clockwise: Boolean
+    ): TitlePlacement {
+        val density = context.resources.displayMetrics.density
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            textSize = 10f * fontScale * density
+        }
+        val metrics = paint.fontMetrics
+        val radius = diameter * density / 2f + if (clockwise) metrics.ascent else -metrics.descent
+        val available = radius * Math.toRadians((sectorAngle - 12f).toDouble()).toFloat()
+        val title = TextUtils.ellipsize(name, paint, available, TextUtils.TruncateAt.END).toString()
+        val bounds = Rect()
+        paint.getTextBounds(title, 0, title.length, bounds)
+        // CurvedTextView 按 bounds.width 居中，却从绘制原点起笔，实际字形中心多出了 bounds.left。
+        val bearingAngle = Math.toDegrees(bounds.left / radius.toDouble()).toFloat()
+        return TitlePlacement(title, center - if (clockwise) bearingAngle else -bearingAngle)
     }
 
     private fun projectClick(context: Context, id: String, token: String): Clickable = Clickable.Builder()

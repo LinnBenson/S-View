@@ -6,13 +6,22 @@ import org.json.JSONObject
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** 一次请求的流与结果；成功消费、取消、超时和窗口关闭都汇合到释放逻辑。 */
-internal class NetworkTask(val id: String, val uploadLength: Long, val destination: DownloadDestination?, private val staging: File, private val temporaryStore: io.todu.sview.storage.TemporaryFiles, private val chunkSize: Int = 65536) : Closeable {
+internal class NetworkTask(
+    val id: String,
+    val uploadLength: Long,
+    val destination: DownloadDestination?,
+    private val staging: File,
+    private val temporaryStore: io.todu.sview.storage.TemporaryFiles,
+    private val chunkSize: Int = 65536,
+    private val coalesceResponse: Boolean = false
+) : Closeable {
     val upload = NetworkPipe()
     val download = NetworkPipe()
     val progress = DownloadProgress()
@@ -68,7 +77,7 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
         value.body?.byteStream()?.use { input ->
             val buffer = ByteArray(chunkSize)
             while (true) {
-                val count = input.read(buffer)
+                val count = readBlock(input, buffer, coalesceResponse && output == null)
                 if (count < 0) break
                 if (cancelled.get()) throw IOException("请求已取消")
                 received += count
@@ -81,6 +90,18 @@ internal class NetworkTask(val id: String, val uploadLength: Long, val destinati
             }
             if (total >= 0 && received != total) throw IOException("响应长度不完整")
         }
+    }
+
+    /** 非流式响应填满固定缓冲区再跨桥；流和文件下载保持即时读取。 */
+    private fun readBlock(input: InputStream, buffer: ByteArray, coalesce: Boolean): Int {
+        var size = 0
+        do {
+            if (cancelled.get()) throw IOException("请求已取消")
+            val count = input.read(buffer, size, buffer.size - size)
+            if (count < 0) return if (size == 0) -1 else size
+            size += count
+        } while (coalesce && size < buffer.size)
+        return size
     }
 
     fun fail(error: Exception, code: String = "NETWORK_ERROR") {

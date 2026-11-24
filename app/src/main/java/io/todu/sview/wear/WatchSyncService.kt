@@ -1,13 +1,11 @@
 package io.todu.sview.wear
 
 import android.app.Application
-import androidx.compose.runtime.snapshotFlow
 import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import io.todu.sview.data.WorkspaceOwner
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -30,7 +28,7 @@ class WatchSyncService : WearableListenerService() {
             val model = withContext(Dispatchers.Main) { WorkspaceOwner.model(application as Application) }
             try {
                 withContext(Dispatchers.Main) {
-                    withTimeout(30000) { snapshotFlow { model.ready }.first { it } }
+                    withTimeout(30000) { model.awaitReady() }
                     model.beginWatchSync(); ownsSync = true
                 }
                 archive = model.repository.temporaryFiles.create(cacheDir, "watch-receive-", ".zip")
@@ -76,7 +74,7 @@ class WatchSyncService : WearableListenerService() {
             val id = DataInputStream(client.getInputStream(channel).suspendResult()).readUTF()
             val result = withContext(Dispatchers.Main) {
                 val model = WorkspaceOwner.model(application as Application)
-                withTimeout(15000) { snapshotFlow { model.ready }.first { it } }
+                withTimeout(15000) { model.awaitReady() }
                 model.readWatchLogs(id)
             }
             WatchLogsProtocol.write(DataOutputStream(client.getOutputStream(channel).suspendResult()), result)

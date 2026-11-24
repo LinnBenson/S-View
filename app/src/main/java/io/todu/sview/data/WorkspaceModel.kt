@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,7 +55,23 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
     private var editorOpen = false
     val project: Project? get() = projects.find { it.id == projectId }
 
+    private val initialization = CompletableDeferred<Unit>()
+
+    /** 等待工作区初始化；失败直接传给调用方，调用方取消不取消共享初始化。 */
+    suspend fun awaitReady() { initialization.await() }
+
     init { task {
+        try {
+            initializeWorkspace(application)
+            initialization.complete(Unit)
+        } catch (failure: Exception) {
+            initialization.completeExceptionally(failure)
+            throw failure
+        }
+    } }
+
+    /** 项目和分类全部读取完成后才允许服务运行脚本。 */
+    private suspend fun initializeWorkspace(application: Application) {
         projects = io { repository.initialize() }
         categories = if (io.todu.sview.wear.WatchDevice.isWatch(application)) emptyList() else io { repository.loadCategories() }
         val obsolete = io { io.todu.sview.wear.WatchWorkspaceStore.obsoleteAtStartup(application) }
@@ -65,7 +82,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
                 io.todu.sview.wear.WatchWorkspaceStore.cleanupObsolete(application, obsolete)
             }
         }
-    } }
+    }
 
     init {
         viewModelScope.launch {
@@ -675,6 +692,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
                             val previous = projects
                             val result = io { lanWorkspace.apply(body, projects, categories) }
                             projects = result.first; categories = result.second
+                            io.todu.sview.share.ShareRegistration.update(getApplication(), projects)
                             val removed = previous.map { it.id }.toSet() - projects.map { it.id }.toSet()
                             removed.forEach { id ->
                                 runCatching { BrowserEngine.clearProject(getApplication(), id) }

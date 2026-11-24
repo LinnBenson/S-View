@@ -6,7 +6,7 @@ const uid = () => globalThis.crypto?.randomUUID?.() || 'p'+Date.now().toString(3
 const DEFAULT_CODE = "const app = document.querySelector( 'main#app' );\napp.classList.add( 'center' );\napp.style.width = '100vw';\napp.style.height = '100vh';\napp.innerHTML = `\n    <h5>Hello World!</h5>\n`;\n";
 const textFile = text => ({kind:'text', text});
 function project(name, category='', code=DEFAULT_CODE) {
- return {id:uid(),name,category,width:'360dp',height:'80%',location:'center',cornerRadius:20,backdropTransparency:40,margins:{top:'0dp',bottom:'0dp',left:'0dp',right:'0dp'},folders:[],files:{'main.js':textFile(code)}};
+ return {id:uid(),name,category,shareSource:'disabled',width:'360dp',height:'80%',location:'center',cornerRadius:20,backdropTransparency:40,margins:{top:'0dp',bottom:'0dp',left:'0dp',right:'0dp'},folders:[],files:{'main.js':textFile(code)}};
 }
 let state, baseline, revision, accessToken = '', view='editor', activeId, activeFile='main.js', openFiles=['main.js'], tabMemory=new Map(), positions=new Map(), currentFolder='', collapsed=new Set(), query='', category='', dirty=false, saveTimer, saveChain=Promise.resolve();
 let undo=new Map(), redo=new Map(), toastTimer;
@@ -27,7 +27,7 @@ async function api(action, body={}, binary=false) {
  if(!response.ok){let message='连接失败';try{message=(await response.json()).error||message}catch{}throw Error(message)}
  return binary?response.blob():response.json();
 }
-const configKeys=['id','name','category','width','height','location','margins','cornerRadius','backdropTransparency','variables'];
+const configKeys=['id','name','category','shareSource','width','height','location','margins','cornerRadius','backdropTransparency','variables'];
 const configOf=p=>Object.fromEntries(configKeys.map(k=>[k,p[k]]));
 const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 /** 仅发送变化的文件，图片等未编辑资源不随代码自动保存重复传输。 */
@@ -133,7 +133,7 @@ function modal(title,content,submit,onSubmit,label='保存'){
 }
 const field=(label,name,value,options={})=>`<label class="field ${options.full?'full':''}">${label}${options.select?`<select name="${name}">${options.select.map(([v,t])=>`<option value="${esc(v)}" ${v===value?'selected':''}>${esc(t)}</option>`).join('')}</select>`:`<input name="${name}" value="${esc(value)}" type="${options.type||'text'}" ${options.required?'required':''} ${options.min!==undefined?`min="${options.min}"`:''} ${options.max!==undefined?`max="${options.max}"`:''} ${options.type==='number'?'step="any"':''}>`}</label>`;
 function settings(id,newProject=false){const p=newProject?project(''):state.projects.find(p=>p.id===id);if(!p)return;
- modal(newProject?'新建项目':'项目设置',`<div class="form-section">${icon('folder')} 基本信息</div><div class="fields">${field('名称','name',p.name,{required:true})}${field('分类','category',p.category,{select:[['','未分类'],...state.categories.map(c=>[c,c])]})}</div><div class="form-section">${icon('monitor')} 运行窗口</div><div class="fields">${field('宽度','width',p.width)}${field('高度','height',p.height)}${field('窗口位置','location',p.location,{full:true,select:[['center','完全居中'],['top','上居中'],['bottom','下居中'],['topLeft','左上角'],['topRight','右上角'],['bottomLeft','左下角'],['bottomRight','右下角']]})}${['top','bottom','left','right'].map((k,i)=>field(['上边距','下边距','左边距','右边距'][i],k,p.margins[k])).join('')}${field('圆角（dp）','cornerRadius',p.cornerRadius,{type:'number',min:0})}${field('遮罩透明度（%）','backdropTransparency',p.backdropTransparency,{type:'number',min:0,max:100})}</div>`,true,async data=>{
+ modal(newProject?'新建项目':'项目设置',`<div class="form-section">${icon('folder')} 基本信息</div><div class="fields">${field('名称','name',p.name,{required:true})}${field('分类','category',p.category,{select:[['','未分类'],...state.categories.map(c=>[c,c])]})}${field('共享来源','shareSource',p.shareSource,{full:true,select:[['disabled','禁用'],['all','全部'],['text','文本'],['file','文件']]})}</div><div class="form-section">${icon('monitor')} 运行窗口</div><div class="fields">${field('宽度','width',p.width)}${field('高度','height',p.height)}${field('窗口位置','location',p.location,{full:true,select:[['center','完全居中'],['top','上居中'],['bottom','下居中'],['topLeft','左上角'],['topRight','右上角'],['bottomLeft','左下角'],['bottomRight','右下角']]})}${['top','bottom','left','right'].map((k,i)=>field(['上边距','下边距','左边距','右边距'][i],k,p.margins[k])).join('')}${field('圆角（dp）','cornerRadius',p.cornerRadius,{type:'number',min:0})}${field('遮罩透明度（%）','backdropTransparency',p.backdropTransparency,{type:'number',min:0,max:100})}</div>`,true,async data=>{
  const next=Object.fromEntries(data);next.name=next.name.trim();if(!next.name)throw Error('请输入项目名称');
  for(const k of ['width','height','top','bottom','left','right']){if(!/^\d+(?:\.\d+)?(?:dp|px|%)$/.test(next[k])||(['width','height'].includes(k)&&parseFloat(next[k])<=0))throw Error('尺寸请填写数值和单位，例如 360dp、80%')}
  next.cornerRadius=Number(next.cornerRadius);next.backdropTransparency=Number(next.backdropTransparency);if(!Number.isFinite(next.cornerRadius)||next.cornerRadius<0||!Number.isFinite(next.backdropTransparency)||next.backdropTransparency<0||next.backdropTransparency>100)throw Error('请检查圆角和透明度');

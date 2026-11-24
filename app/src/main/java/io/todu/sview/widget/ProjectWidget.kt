@@ -75,10 +75,10 @@ class ProjectWidget : AppWidgetProvider() {
                 val selected = WidgetStore.read(context, id)
                 val layouts = WidgetGridSizing.layouts(context, id, options)
                 fun render(layout: WidgetGridSizing.Layout): RemoteViews =
-                    grid(context, id, selected, projects, layout.columns, layout.rows)
+                    grid(context, id, selected, projects, layout)
                 val sizes = if (Build.VERSION.SDK_INT >= 31) options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES) else null
                 val views = when {
-                    layouts.isEmpty() -> grid(context, id, selected, projects, 1, 1)
+                    layouts.isEmpty() -> grid(context, id, selected, projects, WidgetGridSizing.Layout(106f, 134f, 1, 1))
                     Build.VERSION.SDK_INT >= 31 && !sizes.isNullOrEmpty() ->
                         RemoteViews(layouts.associate { SizeF(it.width, it.height) to render(it) })
                     else -> RemoteViews(render(layouts.first()), render(layouts.last()))
@@ -87,7 +87,10 @@ class ProjectWidget : AppWidgetProvider() {
             }
         }
 
-        private fun grid(context: Context, widgetId: Int, selected: List<String>, projects: Map<String, Project>, columns: Int, rows: Int): RemoteViews {
+        private fun grid(context: Context, widgetId: Int, selected: List<String>, projects: Map<String, Project>, layout: WidgetGridSizing.Layout): RemoteViews {
+            val columns = layout.columns
+            val rows = layout.rows
+            val content = WidgetContentSizing.calculate(layout)
             val result = RemoteViews(context.packageName, R.layout.widget_projects)
             result.removeAllViews(R.id.widget_grid)
             repeat(rows) { rowIndex ->
@@ -104,6 +107,7 @@ class ProjectWidget : AppWidgetProvider() {
                     }
                     tile.setViewVisibility(R.id.widget_tile, View.VISIBLE)
                     tile.setTextViewText(R.id.widget_name, project.name)
+                    WidgetContentSizing.apply(context, tile, content)
                     // 复用项目图标目录的资源引用，避免发布包资源名称压缩后查找失效。
                     tile.setImageViewResource(R.id.widget_icon, ProjectIconCatalog.byName[project.icon]?.resource ?: R.drawable.lucide_code)
                     tile.setInt(R.id.widget_tile_color, "setColorFilter", CardColors[project.color.coerceIn(CardColors.indices)].toArgb())

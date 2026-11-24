@@ -16,6 +16,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     exitApplication: () -> Unit,
     nfcEvent: (JSONObject) -> Unit = {},
     localServerEvent: (JSONObject) -> Unit = {}) : Closeable {
+    private val applicationContext = context.applicationContext
     private val customServers = CustomServerApiBridge(context, repository, project.id, localServerEvent)
     private val localServers = LocalServerApiBridge(context, localServerEvent)
     private val hotspot = HotspotApiBridge(context, foreground, localServerEvent)
@@ -29,6 +30,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val interaction = InteractionApiBridge(resize, dismiss, location, removeClose, margin, cornerRadius, preview::open, exitApplication)
 
     fun invoke(request: JSONObject): JSONObject = when {
+        request.optString("method") == "script.isWatch" -> deviceType()
         request.optString("method") == "network.interface" -> NetworkInterfaceApiBridge.invoke()
         request.optString("method") in listOf("network.server", "network.server.close") -> customServers.invoke(request)
         request.optString("method") == "resource.openDevice" -> deviceLinks.invoke(request)
@@ -40,6 +42,13 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
         request.optString("method").startsWith("script.db.") -> database.invoke(request)
         request.optString("method").startsWith("interaction.") -> interaction.invoke(request)
         else -> system.invoke(request)
+    }
+
+    /** 返回当前脚本所在设备的类型，与应用自身的手表识别规则一致。 */
+    private fun deviceType(): JSONObject = try {
+        JSONObject().put("ok", true).put("value", io.todu.sview.wear.WatchDevice.isWatch(applicationContext))
+    } catch (error: Exception) {
+        ApiErrors.failure(error)
     }
 
     fun serverRequest(socket: java.net.Socket, input: java.io.BufferedInputStream, target: String, length: Int, done: () -> Unit) =

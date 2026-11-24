@@ -7,7 +7,8 @@ import java.security.MessageDigest
 class RuntimeArtifactStore(
     private val projectDirectory: (String) -> File,
     private val resolveSource: (String, String) -> File,
-    private val write: (File, String) -> Unit
+    private val write: (File, String) -> Unit,
+    private val isWatch: Boolean
 ) {
     private fun directory(id: String) = File(projectDirectory(id), "runtime")
 
@@ -33,7 +34,7 @@ class RuntimeArtifactStore(
         val manifest = File(folder, "signature")
         val previous = if (manifest.isFile) manifest.readLines() else emptyList()
         val indexSignature = hash(buildString {
-            append(CACHE_VERSION).append(fileStamp(entry))
+            append(CACHE_VERSION).append(isWatch).append(fileStamp(entry))
             project.variables.forEach { append(it.name.length).append(':').append(it.name).append(':').append(it.type).append(':').append(it.value.length).append(':').append(it.value).append('\n') }
             project.references.forEach { append(it.toJson()).append('\n') }
         })
@@ -43,7 +44,7 @@ class RuntimeArtifactStore(
         if (!updateIndex && !updateScript) return
         if (updateIndex) {
             require(entry.isFile) { "缺少入口模板 index.html" }
-            write(index, RuntimeDocument.render(project, entry.readText()))
+            write(index, RuntimeDocument.render(project, entry.readText(), isWatch))
         }
         if (updateScript) write(main, if (script.isFile) script.readText() else "")
         // 最后记录两份签名，中断时下次检查会补齐没有完成的产物。

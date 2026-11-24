@@ -71,6 +71,7 @@ object ScriptApi {
                 async resize(width, height, persist = false) { await call('interaction.resize', { width, height, persist }); }
             },
             script: {
+                isWatch() { return call('script.isWatch', {}); },
                 md5(text) { return call('script.md5', { text }); },
                 qrcode(text) { return call('script.qrcode', { text }); },
                 log: readProjectLog, getShare: getSharedContent, db: ${ScriptDatabaseApi.SCRIPT} }, tools: {}

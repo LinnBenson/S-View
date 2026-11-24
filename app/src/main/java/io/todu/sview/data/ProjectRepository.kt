@@ -71,7 +71,9 @@ class ProjectRepository(private val context: Context) {
 
     private val runtimeReadiness get() = RuntimeReadiness(File(workspace, "runtime-ready"), RuntimeArtifactStore.CACHE_VERSION, ::writeAtomic)
     private var knownProjects: List<Project> = emptyList()
-    private val runtimeArtifacts = RuntimeArtifactStore({ root(it).parentFile!! }, { id, path -> resolve(id, path) }, ::writeAtomic)
+    /** 所有运行页面使用当前设备的类型，避免同步来源影响模板生成。 */
+    val isWatch = io.todu.sview.wear.WatchDevice.isWatch(context)
+    private val runtimeArtifacts = RuntimeArtifactStore({ root(it).parentFile!! }, { id, path -> resolve(id, path) }, ::writeAtomic, isWatch)
 
     fun initialize(): List<Project> {
         // 手表首次安装尚无网页数据，同步空工作区不必为清理而启动浏览器。

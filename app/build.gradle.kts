@@ -13,8 +13,8 @@ android {
         applicationId = "io.todu.sview"
         minSdk = 26
         targetSdk = 36
-        versionCode = 135
-        versionName = "1.3.10"
+        versionCode = 148
+        versionName = "1.5.0"
 
     }
 

@@ -54,6 +54,34 @@ function uuid() {
     return `${value.slice( 0, 8 )}-${value.slice( 8, 12 )}-${value.slice( 12, 16 )}-${value.slice( 16, 20 )}-${value.slice( 20 )}`;
 }
 /**
+ * 生成八位随机标识，首位为字母，其余位从大小写字母和数字中随机选择
+ * @returns {string} 八位随机字符串，不保证多次调用之间绝对唯一
+ */
+function randomId() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const characters = letters + '0123456789';
+    const bytes = new Uint8Array( 32 );
+    let cursor = bytes.length;
+    function choose( alphabet ) {
+        // 拒绝无法均匀映射的字节，避免取余导致部分字符更常出现。
+        const limit = 256 - 256 % alphabet.length;
+        let value;
+        do {
+            if ( cursor === bytes.length ) {
+                crypto.getRandomValues( bytes );
+                cursor = 0;
+            }
+            value = bytes[cursor++];
+        } while ( value >= limit );
+        return alphabet[value % alphabet.length];
+    }
+    let result = choose( letters );
+    for ( let index = 1; index < 8; index++ ) {
+        result += choose( characters );
+    }
+    return result;
+}
+/**
  * 判断字符串是否为 UUID
  * 判断传入值是否符合标准的 8-4-4-4-12 UUID 格式。
  * @param {unknown} value 待判断的值
@@ -207,6 +235,24 @@ function setStyle( selector, property, value ) {
             element.style.setProperty( property, String( value ) );
         }
     });
+}
+/**
+ * 获取第一个匹配元素的属性值
+ * @param {string} selector CSS 选择器
+ * @param {string} name 属性名
+ * @returns {string|null} 元素或属性不存在时返回 null，空属性返回空字符串
+ */
+function getAttr( selector, name ) {
+    const element = document.querySelector( selector );
+    return element ? element.getAttribute( name ) : null;
+}
+/**
+ * 根据根元素的 iswatch 标记判断当前页面是否使用手表布局
+ * @returns {boolean} html 元素存在 iswatch 属性时返回 true
+ */
+function isWatch() {
+    // 无值属性读取结果是空字符串，不能按真假值判断。
+    return getAttr( 'html', 'iswatch' ) !== null;
 }
 /**
  * 设置元素属性

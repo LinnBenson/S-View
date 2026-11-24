@@ -39,6 +39,18 @@ internal val toolInterfaceHelp = listOf(
         category = "工具",
     ),
     InterfaceHelpEntry(
+        name = "randomId",
+        brief = "生成八位随机标识",
+        summary = "生成八位随机字符串，首位从大小写字母中选择，后七位从大小写字母和数字中选择，不保证三类字符都出现。",
+        parameters = emptyList(),
+        resultType = "string",
+        result = "返回八位字符串，例如 a7Bk2M9x。",
+        failure = "浏览器安全随机数功能不可用时抛出异常。",
+        example = "const id = randomId();\nconsole.log(id);",
+        note = "由 global.js 提供，无需 await。使用浏览器安全随机数生成，但不保证多次调用绝对不重复；需要唯一标识时仍应检查冲突。已有自定义模板需合并新增函数或还原为新版模板。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
         name = "is_uuid",
         brief = "检查 UUID 格式",
         summary = "检查十六进制的 8-4-4-4-12 格式，不验证版本位、变体或唯一性。",
@@ -183,6 +195,38 @@ content('#app', '<p>更多内容</p>', 'bottom');""",
         failure = "选择器语法无效时抛出异常。",
         example = "setStyle('.card', 'background-color', 'red');\nsetStyle('.card', 'background-color', null);",
         note = "由 global.js 提供，请先在项目引用项中加载。应在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "getAttr",
+        brief = "读取元素属性",
+        summary = "读取第一个匹配元素的属性值，不读取元素的 JavaScript 属性。",
+        parameters = listOf(
+            InterfaceParameter("selector", "string", true, "CSS 选择器。"),
+            InterfaceParameter("name", "string", true, "HTML 属性名。"),
+        ),
+        resultType = "string|null",
+        result = "返回属性字符串；元素或属性不存在时返回 null，无值属性返回空字符串。",
+        failure = "选择器语法无效时抛出异常。",
+        example = """const title = getAttr('#app', 'title');
+console.log(title);
+// 判断属性是否存在，空字符串也表示存在。
+const marked = getAttr('html', 'iswatch') !== null;""",
+        note = "由 global.js 提供，无需 await。请加载新版模板，并在目标元素创建后调用。",
+        category = "工具",
+    ),
+    InterfaceHelpEntry(
+        name = "isWatch",
+        brief = "判断手表页面标记",
+        summary = "同步检查 html 元素是否存在 iswatch 属性，读取的是当前页面标记。",
+        parameters = emptyList(),
+        resultType = "boolean",
+        result = "属性存在返回 true，即使值为空字符串或字符串 0；属性不存在返回 false。",
+        failure = "页面未添加 iswatch 标记时返回 false。",
+        example = """if (isWatch()) {
+    document.body.classList.add('watch-layout');
+}""",
+        note = "由 global.js 提供，无需 await。入口可写为 <html lang=\"zh-CN\" <!-- sview:iswatch -->>。需要读取系统设备类型时使用 await sview.script.isWatch()。已有自定义 global.js 需合并新增函数或还原为新版模板。",
         category = "工具",
     ),
     InterfaceHelpEntry(

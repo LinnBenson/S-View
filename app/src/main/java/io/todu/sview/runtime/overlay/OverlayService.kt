@@ -21,7 +21,6 @@ import io.todu.sview.data.WorkspaceOwner
 import io.todu.sview.runtime.RuntimeWindow
 import io.todu.sview.ui.theme.SViewTheme
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 
 /** 用户从快捷方式启动的可见悬浮运行；关闭最后一个窗口即结束前台服务。 */
 class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
@@ -64,7 +63,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         request?.cancel()
         request = scope.launch {
             try {
-                withTimeoutOrNull(15000) { snapshotFlow { model.ready }.first { it } } ?: error("工作区加载失败")
+                withTimeoutOrNull(15000) { model.awaitReady() } ?: error("工作区加载超时")
                 val project = model.projects.find { it.id == id } ?: error("项目不存在，请重新配置快捷方式")
                 // 复用工作区的保存和准备队列，避免读取编辑器尚未落盘的代码。
                 val ready = CompletableDeferred<io.todu.sview.data.Project>()

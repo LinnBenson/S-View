@@ -59,7 +59,10 @@ class NativeNetwork(private val repository: ProjectRepository, private val proje
             require(!path.startsWith("device:") || device) { "设备路径应以 device:/ 开头" }
             DownloadDestination(if (device) repository.deviceStorageRoot() else repository.root(projectId), path, device)
         }
-        val task = NetworkTask(UUID.randomUUID().toString(), size, target, staging, repository.temporaryFiles, repository.transferChunkSize)
+        val responseType = config.optString("responseType", "auto")
+        require(responseType in setOf("auto", "json", "text", "blob", "arrayBuffer", "stream")) { "响应格式无效" }
+        val task = NetworkTask(UUID.randomUUID().toString(), size, target, staging, repository.temporaryFiles,
+            repository.transferChunkSize, coalesceResponse = responseType != "stream")
         val builder = Request.Builder().url(url)
         val headers = config.optJSONObject("headers") ?: JSONObject()
         headers.keys().forEach { name ->

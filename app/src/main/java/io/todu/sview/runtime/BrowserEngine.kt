@@ -19,6 +19,7 @@ internal object BrowserEngine {
     /** 启动准备在 IO 线程调用；已标记的后续会话不再同步写盘。 */
     @Synchronized
     fun prepareStorage(context: Context) {
+        BrowserEngineConfiguration.prepare(context)
         val state = storageState(context)
         if (!state.contains("empty") || state.getBoolean("empty", false)) {
             check(state.edit().putBoolean("empty", false).commit()) { "无法记录网页存储状态" }
@@ -28,7 +29,7 @@ internal object BrowserEngine {
     private fun get(context: Context): GeckoRuntime = runtime ?: run {
         // 清理接口也可能首先初始化内核，仍须先撤销已清空标记。
         prepareStorage(context)
-        GeckoRuntime.create(context.applicationContext).also {
+        GeckoRuntime.create(context.applicationContext, BrowserEngineConfiguration.settings(context)).also {
             runtime = it
             BrowserEngineVisibility.install(context)
         }

@@ -185,7 +185,7 @@ class ProjectServer(private val repository: ProjectRepository, private val proje
             val mime = WebMime.of(file)
             // 入口和主脚本直接读取保存时生成的文件，不在请求路径拼装内容。
             if (mime.startsWith("text/html") && path.removePrefix("/") != "index.html" && file.length() <= 4 * 1024 * 1024) {
-                val content = RuntimeDocument.render(project, file.readText(), entry = false)
+                val content = RuntimeDocument.render(project, file.readText(), repository.isWatch, entry = false)
                 respond(socket, 200, mime, content.toByteArray(), request[0] == "HEAD")
             } else {
                 // 保持重新校验语义；文件未变化时无需再次传输脚本或库内容。
