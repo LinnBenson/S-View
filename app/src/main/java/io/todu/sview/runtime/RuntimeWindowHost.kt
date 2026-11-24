@@ -30,7 +30,10 @@ internal fun RuntimeWindowHost(
     val context = androidx.compose.ui.platform.LocalContext.current
     val round = androidx.compose.ui.platform.LocalConfiguration.current.isScreenRound
     if (io.todu.sview.wear.WatchDevice.isWatch(context)) {
-        BackHandler(onBack = onDismiss)
+        BackHandler {
+            io.todu.sview.device.DeviceVibration.click(context)
+            onDismiss()
+        }
         Box(Modifier.fillMaxSize().watchEdgeSwipe(round, onDismiss)) {
             // 手表在当前窗口内运行，没有 Dialog 的系统 dim 层，需要显式绘制项目遮罩。
             if (transparency < 100.0) Box(Modifier.matchParentSize()

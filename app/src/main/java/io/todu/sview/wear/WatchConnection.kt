@@ -68,9 +68,14 @@ class WatchConnection(
     fun refresh() {
         refreshJob?.cancel()
         refreshJob = scope.launch {
-            try { updateNodes(capability.getCapability(CAPABILITY, CapabilityClient.FILTER_REACHABLE).suspendResult()) }
+            try { refreshNodes() }
             catch (error: Exception) { if (error is CancellationException) throw error; devices = emptyList(); message = "未找到手表，请检查系统配对及手表上的 S View" }
         }
+    }
+
+    /** 按需等待本次查询完成，避免用首次进入首页时的空缓存判断连接。 */
+    private suspend fun refreshNodes() {
+        updateNodes(capability.getCapability(CAPABILITY, CapabilityClient.FILTER_REACHABLE).suspendResult())
     }
 
     private fun updateNodes(info: CapabilityInfo) {
@@ -127,16 +132,11 @@ class WatchConnection(
 
     fun sync() = beginSync(false)
 
-    /** 首页只使用已有节点状态，不发起发现、刷新或连接检查。 */
+    /** 仅在用户点击首页同步时查询连接，不在首页初始化时检查或监听。 */
     fun syncFromHome() = beginSync(true)
 
     private fun beginSync(showToast: Boolean) {
         if (busy) return
-        val node = devices.find { it.id == deviceId }
-        if (node == null) {
-            if (showToast) android.widget.Toast.makeText(context, "手表未连接", android.widget.Toast.LENGTH_SHORT).show()
-            return
-        }
         val ids = selected.toList()
         val expandedIds = expanded.toSet()
         val tileIds = tileProjects.toSet()
@@ -146,6 +146,16 @@ class WatchConnection(
         syncJob = scope.launch {
             var archive: File? = null
             try {
+                if (showToast) {
+                    message = "正在检查连接…"
+                    refreshNodes()
+                }
+                val node = devices.find { it.id == deviceId }
+                if (node == null) {
+                    message = "手表未连接"
+                    if (showToast) android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
                 message = "准备同步…"
                 archive = snapshot(ids, expandedIds, tileIds)
                 message = "正在传输 0%"

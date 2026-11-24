@@ -1,5 +1,7 @@
 package io.todu.sview.wear
 
+import io.todu.sview.device.DeviceVibration
+
 import androidx.activity.compose.BackHandler
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
@@ -19,8 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,7 +56,6 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
         var cleared by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         val lock = remember { Mutex() }
-        val haptics = LocalHapticFeedback.current
         val round = LocalConfiguration.current.isScreenRound
         val context = LocalContext.current
         val preferences = remember(context) { context.getSharedPreferences("watch-appearance", android.content.Context.MODE_PRIVATE) }
@@ -98,7 +97,7 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
             else if (active != null) scope.launch { lock.withLock { stopRun() } }
             else if (page != "home") page = "home" else onExit()
         }
-        BackHandler { back() }
+        BackHandler { DeviceVibration.click(context); back() }
         DisposableEffect(model) {
             model.stopWatchRun = { lock.withLock { stopRun() } }
             onDispose { model.stopWatchRun = null }
@@ -114,9 +113,11 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
                     !model.ready -> CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.Center), strokeWidth = 2.dp)
                     page == "home" -> WatchProjects(model.projects, model.watchSyncBusy || model.appExiting || launching, grid,
                         !model.clearingCache && !model.watchSyncBusy && !model.appExiting,
-                        { page = "permissions" }, { cleared = false; page = "clear" }, { page = "about" },
-                        { grid = !grid; preferences.edit().putBoolean("grid", grid).apply() }) { project ->
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        { DeviceVibration.click(context); page = "permissions" },
+                        { DeviceVibration.click(context); cleared = false; page = "clear" },
+                        { DeviceVibration.click(context); page = "about" },
+                        { DeviceVibration.click(context); grid = !grid; preferences.edit().putBoolean("grid", grid).apply() }) { project ->
+                        DeviceVibration.click(context)
                         launchProject(project.id)
                     }
                     page == "about" -> WatchAboutScreen()

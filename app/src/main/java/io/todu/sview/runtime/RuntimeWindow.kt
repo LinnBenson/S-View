@@ -251,7 +251,8 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     val transparentBackdrop = project.backdropTransparency == 100.0
     val closeFromClick: () -> Unit = {
         if (!closing) {
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (watch) io.todu.sview.device.DeviceVibration.click(context)
+            else haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             closeWindow()
         }
     }

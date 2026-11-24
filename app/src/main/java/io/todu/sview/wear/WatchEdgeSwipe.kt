@@ -1,12 +1,13 @@
 package io.todu.sview.wear
 
+import io.todu.sview.device.DeviceVibration
+
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.composed
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -15,10 +16,10 @@ import kotlin.math.sqrt
 
 /** 仅识别左侧 16dp 边缘区域起手的右滑，返回前给予一次系统触感反馈。 */
 fun Modifier.watchEdgeSwipe(round: Boolean, onBack: () -> Unit): Modifier = composed {
-    val haptics = LocalHapticFeedback.current
+    val context = LocalContext.current
     val currentOnBack = rememberUpdatedState(onBack)
     // 回调更新不重启手势协程，避免网页或系统页面重组打断正在进行的滑动。
-    pointerInput(round, haptics) {
+    pointerInput(round, context) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             val radius = size.width / 2f
@@ -36,7 +37,7 @@ fun Modifier.watchEdgeSwipe(round: Boolean, onBack: () -> Unit): Modifier = comp
                 if (!returned && pointer.pressed && delta.x > 38.dp.toPx() && delta.x > abs(delta.y) * 1.5f) {
                     returned = true
                     pointer.consume()
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    DeviceVibration.click(context)
                     currentOnBack.value()
                 }
                 if (returned) event.changes.forEach { it.consume() }

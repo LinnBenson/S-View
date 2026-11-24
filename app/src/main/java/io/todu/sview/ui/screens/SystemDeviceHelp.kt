@@ -76,8 +76,8 @@ internal val deviceInterfaceHelp = listOf(
     ),
     InterfaceHelpEntry(
         name = "sview.system.writeClipboard",
-        brief = "写入剪切板文字",
-        summary = "写入剪切板文字，成功后显示“已复制”提示。",
+        brief = "写入剪切板并振动反馈",
+        summary = "写入成功后显示“已复制”提示，并触发一次短促点击振动，失败时不振动。手机和手表均使用与 vibrate(20) 相同的效果，实际触感由设备决定。",
         parameters = listOf(InterfaceParameter("text", "string", true, "要复制的文字，最多 8192 个字符；允许空字符串。")),
         resultType = "Promise<void>",
         result = "无返回数据，表示已写入系统剪切板。",
