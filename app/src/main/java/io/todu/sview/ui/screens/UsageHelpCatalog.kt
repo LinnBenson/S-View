@@ -48,6 +48,13 @@ console.log(share.files); // []"""),
 </div>""", language = "HTML"),
         UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
     )),
+    UsageHelpEntry("switch", "切换器", "并排展示选项，突出当前选项", listOf(
+        UsageHelpSection("HTML 示例", "加载 global.css 和 Lucide 图标库后使用。active 标记当前选项，点击切换需自行绑定。", """<ul switch>
+    <li class="active"><i class="right4" data-lucide="info"></i>手机配色</li>
+    <li><i class="right4" data-lucide="info"></i>手表配色</li>
+</ul>""", language = "HTML"),
+        UsageHelpSection("显示图标", "添加 HTML 后调用 lucide.createIcons()。使用 global.js 中的 content() 填充内容时，会自动生成图标。"),
+    )),
     UsageHelpEntry("loader", "加载组件", "显示加载动画", listOf(
         UsageHelpSection("HTML 示例", "加载 global.css 后使用。加载结束后移除或隐藏此元素。", """<div loader></div>""", language = "HTML"),
     )),

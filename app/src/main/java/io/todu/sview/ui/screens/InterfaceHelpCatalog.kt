@@ -73,7 +73,7 @@ internal val systemInterfaceHelp = listOf(
     ),
 )
 
-internal val interfaceHelp = systemInterfaceHelp + deviceInterfaceHelp + interactionInterfaceHelp + networkInterfaceHelp + toolInterfaceHelp + scriptDatabaseHelp + scriptShareHelp + scriptLogHelp + scriptTextHelp + scriptDeviceHelp + storageInterfaceHelp + scanInterfaceHelp + infoInterfaceHelp + nfcInterfaceHelp + notifyMonitorHelp + webMediaHelp
+internal val interfaceHelp = systemInterfaceHelp + deviceInterfaceHelp + interactionInterfaceHelp + networkInterfaceHelp + toolInterfaceHelp + scriptDatabaseHelp + scriptShareHelp + scriptLogHelp + scriptTextHelp + scriptDeviceHelp + storageInterfaceHelp + scanInterfaceHelp + infoInterfaceHelp + nfcInterfaceHelp + notifyMonitorHelp
 
 /** 分类标题只显示 sview 的一级命名空间，子模块留在方法名前。 */
 internal val InterfaceHelpEntry.namespace: String

@@ -275,4 +275,4 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 
 手机和手表均可在设置 → 权限中授权麦克风和相机。项目页面在前台调用 `navigator.mediaDevices.getUserMedia({ audio: true })` 采集音频，或传入 `video: true` 使用相机；可用标准 `MediaRecorder` 录制。设备必须具备对应硬件。
 
-`MediaRecorder.stop()` 只结束录制，还应对 `stream.getTracks()` 中的轨道调用 `stop()` 释放设备。运行窗口关闭时会销毁网页会话，原生兜底释放采集；需要保留的录音应在关窗前保存。只授权当前项目的本地来源，不授权外部网页；不提供后台采集保活，格式和设备约束以浏览器实际支持为准。应用内系统接口页提供示例。
+`MediaRecorder.stop()` 只结束录制，还应对 `stream.getTracks()` 中的轨道调用 `stop()` 释放设备。运行窗口关闭时会销毁网页会话，原生兜底释放采集；需要保留的录音应在关窗前保存。只授权当前项目的本地来源，不授权外部网页；不提供后台采集保活，格式和设备约束以浏览器实际支持为准。
