@@ -122,8 +122,9 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
                     page == "about" -> WatchAboutScreen()
                     page == "permissions" -> WatchPage("权限") {
                         item { NotificationPermissionRow() }
+                        item { io.todu.sview.ui.screens.NotificationAccessPermissionRow() }
                         item { io.todu.sview.ui.screens.HealthPermissionRow() }
-                        listOf("overlay", "install", "storage", "bluetooth", "wifi", "location").forEach { permission ->
+                        listOf("microphone", "camera", "overlay", "install", "storage", "bluetooth", "wifi", "location").forEach { permission ->
                             item { DevicePermissionRows(permission) }
                         }
                     }

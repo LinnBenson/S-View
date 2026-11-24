@@ -20,6 +20,7 @@ object ScriptApi {
         ${ScriptLogApi.SCRIPT}
         ${ScriptMonitor.SCRIPT}
         ${ScriptNfc.SCRIPT}
+        ${ScriptNotifyMonitor.SCRIPT}
         ${ScriptCustomServer.SCRIPT}
         ${ScriptLocalServers.SCRIPT}
         ${ScriptDeviceResources.SCRIPT}
@@ -28,6 +29,7 @@ object ScriptApi {
         const sview = {
             system: {
                 nfc,
+                notifyMonitor,
                 getInfo() { return call('system.getInfo', {}); },
                 getScreen() { return call('system.getScreen', {}); },
                 async toast(message, duration = 'short') {

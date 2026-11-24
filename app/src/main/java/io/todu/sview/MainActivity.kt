@@ -94,9 +94,9 @@ open class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing && !redirectedToWatch) {
             model.closeWatchConnection()
-            stopService(android.content.Intent(this, io.todu.sview.runtime.overlay.OverlayService::class.java))
             model.lanEditor.stop()
             model.stopFtpEditor()
+            stopService(android.content.Intent(this, io.todu.sview.runtime.overlay.OverlayService::class.java))
             if (!watchExitReady) model.flush()
         }
         super.onDestroy()
@@ -109,8 +109,6 @@ open class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         if (!redirectedToWatch) {
-            model.lanEditor.stop()
-            model.stopFtpEditor()
             if (!watchExitReady) model.flush()
         }
         super.onStop()
@@ -179,9 +177,11 @@ open class MainActivity : ComponentActivity() {
         }
         DisposableEffect(Unit) {
             model.remoteRun = { project ->
+                check(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) { "请保持手机应用在前台" }
                 runLock.lock()
                 try {
                     stopRun()
+                    check(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) { "请保持手机应用在前台" }
                     check(model.lanEditor.running) { "服务已停止" }
                     showRun(project)
                 } finally { runLock.unlock() }

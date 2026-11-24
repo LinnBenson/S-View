@@ -90,6 +90,8 @@ fun PermissionsScreen(onBack: () -> Unit) {
             SettingRow("globe", "网络访问", value = "已允许", onClick = null)
             HorizontalDivider(color = Line)
             NotificationPermissionRow()
+            HorizontalDivider(color = Line)
+            NotificationAccessPermissionRow()
             DevicePermissionRows()
             HorizontalDivider(color = Line)
             HealthPermissionRow()

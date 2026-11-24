@@ -42,6 +42,7 @@ class WindowEvents(private val release: (Socket) -> Unit = {}) : Closeable {
     fun marginChanged(margins: io.todu.sview.data.WindowMargins) = publish("margin", margins.toJson().toString())
     fun cornerRadiusChanged(radius: Double) = publish("cornerRadius", JSONObject().put("cornerRadius", radius).toString())
     fun localServerEvent(event: JSONObject) = publish("local-server", event.toString())
+    fun notifyMonitorEvent(event: JSONObject) = publish("notify-monitor", event.toString())
     fun nfcEvent(event: JSONObject) = publish("nfc", event.toString())
     fun pageStarted() = synchronized(lock) { ready = false }
     fun pageReady() = synchronized(lock) {

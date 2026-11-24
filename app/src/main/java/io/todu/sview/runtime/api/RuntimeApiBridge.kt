@@ -15,11 +15,13 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     cornerRadius: (Double, Boolean, (Result<Unit>) -> Unit) -> Unit,
     exitApplication: () -> Unit,
     nfcEvent: (JSONObject) -> Unit = {},
+    notifyMonitorEvent: (JSONObject) -> Unit = {},
     localServerEvent: (JSONObject) -> Unit = {}) : Closeable {
     private val applicationContext = context.applicationContext
     private val customServers = CustomServerApiBridge(context, repository, project.id, localServerEvent)
     private val localServers = LocalServerApiBridge(context, localServerEvent)
     private val hotspot = HotspotApiBridge(context, foreground, localServerEvent)
+    private val notifyMonitor = NotifyMonitorApiBridge(applicationContext, notifyMonitorEvent)
     private val nfc = NfcApiBridge(context, foreground, nfcEvent)
     private val database = DatabaseApiBridge(context)
     private val textTools = ScriptTextApiBridge()
@@ -36,6 +38,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
         request.optString("method") == "resource.openDevice" -> deviceLinks.invoke(request)
         request.optString("method") in listOf("network.chatServer", "network.uploadServer", "network.localServer.send", "network.localServer.close") -> localServers.invoke(request)
         request.optString("method").startsWith("network.hotspot") -> hotspot.invoke(request)
+        request.optString("method").startsWith("system.notifyMonitor.") -> notifyMonitor.invoke(request)
         request.optString("method").startsWith("system.nfc.") -> nfc.invoke(request)
         request.optString("method") in listOf("script.md5", "script.qrcode") -> textTools.invoke(request)
         request.optString("method") == "script.log" -> logs.invoke(request)
@@ -62,6 +65,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
         cleanupResource("局域网服务") { localServers.close() }
         cleanupResource("本地热点") { hotspot.close() }
         nfc.close()
+        cleanupResource("通知监听") { notifyMonitor.close() }
         cleanupResource("设备文件链接") { deviceLinks.close() }
         cleanupResource("图片预览") { preview.close() }
         cleanupResource("交互接口") { interaction.close() }

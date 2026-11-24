@@ -5,7 +5,9 @@ import java.net.Inet4Address
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.Semaphore
 
 /** 只绑定启动时的局域网 IPv4 地址，最多两个会话，不创建轮询或唤醒锁。 */
@@ -14,7 +16,10 @@ class FtpServer(hosts: List<Inet4Address>, port: Int, private val password: Stri
     private val listeners = mutableListOf<ServerSocket>()
     private val sessions = ConcurrentHashMap.newKeySet<FtpSession>()
     private val permits = Semaphore(2)
-    private val workers = Executors.newFixedThreadPool(2) { task -> Thread(task, "FTP 文件传输").apply { isDaemon = true } }
+    // 连接结束后回收空闲工作线程；监听线程仍可接受新连接并按需创建线程。
+    private val workers = ThreadPoolExecutor(2, 2, 20, TimeUnit.SECONDS, LinkedBlockingQueue<Runnable>()) { task ->
+        Thread(task, "FTP 文件传输").apply { isDaemon = true }
+    }.apply { allowCoreThreadTimeOut(true) }
     @Volatile private var closed = false
 
     init {

@@ -81,6 +81,11 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     var runtimeHeight by remember(project.id) { mutableStateOf(project.height) }
     var server by remember(project.id) { mutableStateOf<ProjectServer?>(null) }
     var session by remember(project.id) { mutableStateOf<GeckoSession?>(null) }
+    val mediaPermissions = remember(project.id) {
+        WebMediaPermissions(context, { server?.uri }, {
+            !closing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        })
+    }
     val closeWindow: () -> Unit = {
         if (!closing) {
             closing = true
@@ -98,6 +103,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     val systemApi = remember(project.id) {
         RuntimeApiBridge(context, project, repository,
             nfcEvent = { server?.events?.nfcEvent(it) },
+            notifyMonitorEvent = { server?.events?.notifyMonitorEvent(it) },
             localServerEvent = { server?.events?.localServerEvent(it) },
             exitApplication = { RuntimeAppExit.request(context.applicationContext) },
             foreground = { !closing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) },
@@ -142,8 +148,10 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
         val oldServer = server
         session = null
         server = null
+        cleanupResource("网页媒体授权") { mediaPermissions.close() }
         cleanupResource("系统接口") { systemApi.close() }
         oldSession?.let {
+            cleanupResource("网页媒体回调") { it.permissionDelegate = null }
             cleanupResource("页面进度监听") { it.progressDelegate = null }
             cleanupResource("页面内容监听") { it.contentDelegate = null }
             cleanupResource("页面停用") { it.setActive(false) }
@@ -195,6 +203,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
                 val opened = BrowserEngine.openSession(context, project.id, overlay = overlay != null)
                 session = opened
                 opened.apply {
+                    permissionDelegate = mediaPermissions
                     progressDelegate = object : GeckoSession.ProgressDelegate {
                         override fun onPageStart(session: GeckoSession, url: String) { pageLoaded = false; pageSucceeded = false; server?.events?.pageStarted() }
                         override fun onPageStop(session: GeckoSession, success: Boolean) {

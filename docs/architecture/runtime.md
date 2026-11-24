@@ -55,3 +55,13 @@ RuntimeWindowHost 在实际承载内容的 LocalView 上设置 keepScreenOn，�
 默认 `global.js` 提供同步工具 `getAttr(selector, name)`，读取首个匹配元素的属性，元素或属性缺失时返回 `null`，空属性返回空字符串。`isWatch()` 根据根元素是否存在 `iswatch` 属性返回布尔值，读取的是页面标记；原生设备判断仍可调用 `await sview.script.isWatch()`。已有全局脚本需自行合并或还原模板，升级不覆盖自定义内容。
 
 默认 `global.js` 的 `randomId()` 同步返回八位随机字符串，首位为字母，后七位从大小写字母和数字中随机选择，不保证三类字符都出现。使用浏览器安全随机数与拒绝采样，不承诺跨调用唯一；工具页提供调用说明。
+
+## 通知监听
+
+sview.system.notifyMonitor 使用当前运行窗口的事件连接传递 start、message、error、close，不另建轮询线程。通知使用权由系统设置授予，与 POST_NOTIFICATIONS 独立。NotificationMonitorService 只在有订阅时转换有界文本快照，无订阅时请求系统解绑；不读取历史通知、不写入通知文件。系统连接超时为 15 秒，断开或撤销权限会结束监听。后台不注销订阅，窗口资源释放时同步注销；脚本 close 和页面退出也会清理事件回调。共享窗口事件历史最多 512 条或 2 MiB，系统冻结页面时可能延迟交付，超过保留范围沿用 EVENT_GAP 错误。
+
+## 网页媒体授权
+
+WebMediaPermissions 接入实际 GeckoSession.PermissionDelegate，仅接受 RECORD_AUDIO、CAMERA 以及当前 ProjectServer 来源的麦克风和摄像头请求。Android 权限由手机和手表设置页统一申请，网页请求同步核验，不保存授权回调，也不创建线程或长期任务；屏幕采集和其他权限不放行。设备顺序沿用 Gecko 对 constraints 的筛选结果。
+
+窗口关闭先将授权代理标记为关闭、清空 permissionDelegate，再走原有 BrowserEngine.closeSession；GeckoSession.close 销毁原生网页窗口并释放其媒体采集。崩溃、系统终止和启动失败复用同一资源释放路径。不以网页 pagehide 或 JS Track.stop 成功作为释放前提。硬件 feature 均为可选，避免无摄像头的手表被过滤。

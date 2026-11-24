@@ -49,6 +49,7 @@ fun LanEditorScreen(controller: LocalEditorController, ftp: Boolean = false, onB
             .imePadding().verticalScroll(rememberScrollState()).padding(horizontal = if (round) 4.dp else 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)) {
             LanServiceStatus(controller, ftp)
+            NotificationPermissionRow()
             if (ftp) Text("用户名：sview", color = Ink, fontSize = 14.sp)
             if (controller.running) LanAddresses(controller.addresses)
             else Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -71,7 +72,7 @@ fun LanEditorScreen(controller: LocalEditorController, ftp: Boolean = false, onB
                 if (controller.running) controller.stop() else scope.launch { controller.start(port, password) }
             }
             controller.message?.let { Text(it, color = Color(0xFFC45360), fontSize = 12.sp, lineHeight = 19.sp) }
-            Text(if (ftp) "同一局域网 · 离开应用自动停止\nFTP 不加密，仅在可信网络使用" else "同一局域网 · 离开应用自动停止\nHTTP 连接，仅在可信网络使用", color = Muted, fontSize = 11.sp, lineHeight = 19.sp)
+            Text(if (ftp) "同一局域网 · 支持后台运行\nFTP 不加密，仅在可信网络使用" else "同一局域网 · 支持后台运行\nHTTP 连接，仅在可信网络使用", color = Muted, fontSize = 11.sp, lineHeight = 19.sp)
         }
     }
 }

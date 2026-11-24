@@ -4,7 +4,7 @@ import org.json.JSONObject
 
 /** 保存时生成运行入口；变量和日志桥先于用户引用执行。 */
 object RuntimeDocument {
-    const val REVISION = 30
+    const val REVISION = 31
 
     fun render(project: Project, source: String, isWatch: Boolean, entry: Boolean = true): String {
         // 在浏览器解析前替换属性标记，源模板保持原样，跨设备同步后重新生成。

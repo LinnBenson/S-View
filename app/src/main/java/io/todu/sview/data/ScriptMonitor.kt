@@ -31,6 +31,7 @@ object ScriptMonitor {
             if (ended) return;
             ended = true;
             closeNfcWindow();
+            closeNotifyMonitorWindow();
             for (const record of localServers.values()) cancelCustomServerRequests(record);
             if (resizeFrame) cancelAnimationFrame(resizeFrame);
             if (events) events.close();
@@ -45,7 +46,7 @@ object ScriptMonitor {
         // 对外保持同一个事件目标，重连不丢失 NFC 和服务注册的回调。
         let eventSource, reconnectTimer, reconnectStarted = 0, reconnectDelay = 250;
         let lastEventId = 0, eventPaused = false;
-        const eventNames = ['ready', 'runtime-error', 'location', 'margin', 'cornerRadius', 'close', 'nfc', 'local-server'];
+        const eventNames = ['ready', 'runtime-error', 'location', 'margin', 'cornerRadius', 'close', 'nfc', 'notify-monitor', 'local-server'];
         function stopWindowEvents() {
             eventPaused = true;
             clearTimeout(reconnectTimer); reconnectTimer = undefined;

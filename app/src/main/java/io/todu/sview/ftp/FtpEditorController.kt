@@ -12,7 +12,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** 仅手机按需创建 FTP 服务；退出前台后关闭全部控制连接和数据连接。 */
+/** 仅手机按需创建 FTP 服务；后台继续监听，主动停止时关闭控制和数据连接。 */
 class FtpEditorController(private val context: Context, private val access: (FtpRequest) -> FtpResult) : LocalEditorController {
     override var running by mutableStateOf(false); private set
     override var busy by mutableStateOf(false); private set
@@ -23,6 +23,7 @@ class FtpEditorController(private val context: Context, private val access: (Ftp
     override val savedPort get() = preferences.getInt("port", 2121).toString()
     private var server: FtpServer? = null
     private var generation = 0
+    private var keepAlive: io.todu.sview.lan.LocalEditorService.Session? = null
 
     override suspend fun savedPassword(): String = try {
         withContext(Dispatchers.IO) { LanPasswordStore(context, "ftp-password").read() }
@@ -42,6 +43,8 @@ class FtpEditorController(private val context: Context, private val access: (Ftp
             val port = portText.toIntOrNull()
             require(port != null && port in 1024..65535) { "端口应为 1024 到 65535" }
             require(password.length in 4..128 && password.none { it < ' ' }) { "访问密码应为 4 到 128 个可见字符" }
+            keepAlive = io.todu.sview.lan.LocalEditorService.acquire(context, "FTP", ::stop)
+            if (current != generation) return
             val hosts = withContext(Dispatchers.IO) { LocalEditorAddresses.hosts() }
             require(hosts.isNotEmpty()) { "请先连接 Wi-Fi 或开启热点" }
             withContext(Dispatchers.IO) {
@@ -59,6 +62,7 @@ class FtpEditorController(private val context: Context, private val access: (Ftp
             message = if (error is java.net.BindException) "端口已被占用，请更换端口" else error.message ?: "无法启动服务"
         } finally {
             if (server !== candidate) candidate?.close()
+            if (!running) { keepAlive?.close(); keepAlive = null }
             busy = false
         }
     }
@@ -68,6 +72,7 @@ class FtpEditorController(private val context: Context, private val access: (Ftp
 
     override fun stop() {
         ++generation
+        keepAlive?.close(); keepAlive = null
         server?.close()
         server = null
         running = false

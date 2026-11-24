@@ -88,7 +88,7 @@ document.querySelector('#count').addEventListener('click', (event) => {
 
 项目编辑器右上角可管理当前项目的全局变量。点击“运行”会先保存，再在手机上运行项目；网页本身不提供运行预览。
 
-使用时请保持手机应用在前台，离开应用会停止服务。连接使用 HTTP，应只在可信网络中开启。另一端修改工作区后，旧网页会拒绝覆盖保存；请先下载需要保留的未保存文件，再刷新页面。
+切换应用后仍可编辑文件，通知中可停止服务；主动退出或移除任务时停止。网页运行项目时需将手机应用切回前台。连接使用 HTTP，应只在可信网络中开启。另一端修改工作区后，旧网页会拒绝覆盖保存；请先下载需要保留的未保存文件，再刷新页面。
 
 网页单文件传输上限为 16 MB，文本直接编辑上限为 2 MB，项目 ZIP 导出上限为 64 MB。较大的项目可在手机端导出。
 
@@ -100,7 +100,7 @@ document.querySelector('#count').addEventListener('click', (event) => {
 
 上传前请关闭手机代码编辑页面，避免未保存内容被覆盖。FTP 不提供跨客户端的版本冲突检查，请勿同时从多处编辑同一个文件。上传完成后，按原来的手表同步操作将项目更新传到手表，手表端无需开启 FTP。
 
-服务仅在手机端提供，离开应用自动停止。普通 FTP 不加密，仅在可信局域网使用；不支持 SFTP 或 FTPS。
+服务仅在手机端提供，切换应用后通过前台服务继续运行，通知中可停止；主动退出或移除任务时停止。普通 FTP 不加密，仅在可信局域网使用；不支持 SFTP 或 FTPS。
 
 ## 桌面小部件与手表磁贴
 
@@ -266,3 +266,13 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 | OkHttp、Okio、Prism4j、ZXing Core | Apache License 2.0 |
 
 随附许可文件位于 [`app/src/main/assets/licenses/`](app/src/main/assets/licenses/)；Lucide 图标资源另附 [许可证](app/src/main/assets/lucide/LICENSE)。GeckoView 的源码及构建信息可参阅 [Mozilla 项目文档](https://firefox-source-docs.mozilla.org/mobile/android/geckoview/)。
+
+### 监听通知
+
+先在设置 → 权限中授予“通知使用权”，再调用 `sview.system.notifyMonitor({ onStart, onMessage, onError, onClose })`。接口立即返回 `{ close() }`，无需 `await`；`onMessage` 接收启动后的通知新增、更新和移除事件。退到后台后继续监听，运行窗口关闭时自动停止，也可调用返回对象的 `close()`。不读取历史通知；敏感内容是否可见由系统决定。完整字段与示例见应用内系统接口说明。
+
+### 网页录音与相机
+
+手机和手表均可在设置 → 权限中授权麦克风和相机。项目页面在前台调用 `navigator.mediaDevices.getUserMedia({ audio: true })` 采集音频，或传入 `video: true` 使用相机；可用标准 `MediaRecorder` 录制。设备必须具备对应硬件。
+
+`MediaRecorder.stop()` 只结束录制，还应对 `stream.getTracks()` 中的轨道调用 `stop()` 释放设备。运行窗口关闭时会销毁网页会话，原生兜底释放采集；需要保留的录音应在关窗前保存。只授权当前项目的本地来源，不授权外部网页；不提供后台采集保活，格式和设备约束以浏览器实际支持为准。应用内系统接口页提供示例。

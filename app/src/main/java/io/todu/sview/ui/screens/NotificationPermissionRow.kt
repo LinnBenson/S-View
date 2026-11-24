@@ -18,6 +18,27 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.todu.sview.runtime.api.ScriptNotifications
 import io.todu.sview.ui.components.Line
 
+/** 通知使用权由系统设置单独授权，不与发送通知权限混用。 */
+@Composable
+fun NotificationAccessPermissionRow() {
+    PermissionRow("bell", "通知使用权", "notification_access", emptyArray(),
+        status = { context -> when {
+            io.todu.sview.runtime.notifications.NotificationMonitorService.allowed(context) -> "已允许"
+            notificationAccessSettings(context) == null -> "无授权入口"
+            else -> "未允许"
+        } },
+        settings = ::notificationAccessSettings)
+}
+
+/** 优先打开当前应用详情，系统未提供页面时返回空值，避免启动不存在的 Activity。 */
+private fun notificationAccessSettings(context: Context): Intent? {
+    val detail = if (Build.VERSION.SDK_INT >= 30) Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+        .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+            io.todu.sview.runtime.notifications.NotificationMonitorService.component(context).flattenToString()) else null
+    val candidates = listOfNotNull(detail, Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    return candidates.firstOrNull { it.resolveActivity(context.packageManager) != null }
+}
+
 /** 权限只在用户点击时申请，已申请的项目转到系统设置管理。 */
 @Composable
 fun NotificationPermissionRow() {
@@ -29,6 +50,24 @@ fun NotificationPermissionRow() {
 
 @Composable
 fun DevicePermissionRows(only: String? = null) {
+    if (only == null || only == "microphone") {
+        if (only == null) HorizontalDivider(color = Line)
+        PermissionRow("mic", "麦克风", "microphone_requested", arrayOf(Manifest.permission.RECORD_AUDIO),
+            status = { when {
+                !it.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE) -> "无麦克风"
+                granted(it, Manifest.permission.RECORD_AUDIO) -> "已允许"
+                else -> "未允许"
+            } })
+    }
+    if (only == null || only == "camera") {
+        if (only == null) HorizontalDivider(color = Line)
+        PermissionRow("camera", "相机", "camera_requested", arrayOf(Manifest.permission.CAMERA),
+            status = { when {
+                !it.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) -> "无摄像头"
+                granted(it, Manifest.permission.CAMERA) -> "已允许"
+                else -> "未允许"
+            } })
+    }
     if (only == null || only == "overlay") {
         if (only == null) HorizontalDivider(color = Line)
         PermissionRow("bring-to-front", "悬浮窗", "overlay_requested", emptyArray(),
@@ -81,7 +120,7 @@ private fun granted(context: Context, permission: String) = context.checkSelfPer
 
 @Composable
 internal fun PermissionRow(icon: String, title: String, key: String, permissions: Array<String>, status: (Context) -> String,
-    settings: (Context) -> Intent = { Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${it.packageName}")) }) {
+    settings: (Context) -> Intent? = { Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${it.packageName}")) }) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var value by remember { mutableStateOf(status(context)) }
@@ -96,6 +135,17 @@ internal fun PermissionRow(icon: String, title: String, key: String, permissions
         if (permissions.any { !granted(context, it) } && !preferences.getBoolean(key, false)) {
             preferences.edit().putBoolean(key, true).apply()
             request.launch(permissions)
-        } else context.startActivity(settings(context))
+        } else {
+            val intent = settings(context)
+            if (intent == null) {
+                android.widget.Toast.makeText(context, "系统未提供此授权入口", android.widget.Toast.LENGTH_SHORT).show()
+            } else try {
+                context.startActivity(intent)
+            } catch (_: android.content.ActivityNotFoundException) {
+                android.widget.Toast.makeText(context, "无法打开系统权限页面", android.widget.Toast.LENGTH_SHORT).show()
+            } catch (_: SecurityException) {
+                android.widget.Toast.makeText(context, "系统不允许打开此页面", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
