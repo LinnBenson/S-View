@@ -23,6 +23,7 @@ object ScriptApi {
         ${ScriptNotifyMonitor.SCRIPT}
         ${ScriptCustomServer.SCRIPT}
         ${ScriptLocalServers.SCRIPT}
+        ${ScriptPortScan.SCRIPT}
         ${ScriptDeviceResources.SCRIPT}
         ${ScriptShare.SCRIPT}
         ${ScriptDatabaseApi.KEY_CHECK}
@@ -55,6 +56,7 @@ object ScriptApi {
                 getBatteryInfo() { return call('system.getBatteryInfo', {}); }
             },
             network: {
+                scanPorts,
                 interface() { return call('network.interface', {}); },
                 server: options => startLocalServer('server', options),
                 chatServer: options => startLocalServer('chatServer', options),

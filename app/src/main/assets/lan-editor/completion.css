@@ -1,0 +1,10 @@
+/* 浮层独立于代码滚动容器，窄窗口也不超出屏幕。 */
+.completion-popup{position:fixed;z-index:90;width:min(380px,calc(100vw - 16px));background:#252f41;color:#d8e1ef;border:1px solid #46536a;border-radius:8px;box-shadow:0 8px 28px #10182855;overflow:hidden;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+.completion-popup[hidden]{display:none}
+.completion-list{max-height:220px;overflow:auto;overscroll-behavior:contain}
+.completion-list>[role=option]{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:7px 10px;cursor:pointer;min-height:30px}
+.completion-list>[role=option]>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.completion-list>[role=option]>small{color:#a4b5cf;flex-shrink:0}
+.completion-list>[aria-selected=true]{background:#3a5278;color:#fff}
+.completion-detail{padding:9px 10px;border-top:1px solid #46536a;color:#b9c8dd;font-size:11px;max-height:70px;overflow:auto;overflow-wrap:anywhere}
+.completion-mirror{position:fixed;left:-100000px;top:0;visibility:hidden;white-space:pre;pointer-events:none;box-sizing:border-box}

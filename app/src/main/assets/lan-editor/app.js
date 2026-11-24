@@ -8,7 +8,7 @@ const textFile = text => ({kind:'text', text});
 function project(name, category='', code=DEFAULT_CODE) {
  return {id:uid(),name,category,shareSource:'disabled',width:'360dp',height:'80%',location:'center',cornerRadius:20,backdropTransparency:40,margins:{top:'0dp',bottom:'0dp',left:'0dp',right:'0dp'},folders:[],files:{'main.js':textFile(code)}};
 }
-let state, baseline, revision, accessToken = '', view='editor', activeId, activeFile='main.js', openFiles=['main.js'], tabMemory=new Map(), positions=new Map(), currentFolder='', collapsed=new Set(), query='', category='', dirty=false, saveTimer, saveChain=Promise.resolve();
+let state, baseline, accessToken = '', view='editor', activeId, activeFile='main.js', openFiles=['main.js'], tabMemory=new Map(), positions=new Map(), currentFolder='', collapsed=new Set(), query='', category='', dirty=false, saveTimer, saveChain=Promise.resolve();
 let undo=new Map(), redo=new Map(), toastTimer;
 const projectNow=()=>state.projects.find(p=>p.id===activeId);
 const filesNow=()=>view==='templates'?state.templates:projectNow()?.files || {};
@@ -47,13 +47,20 @@ function changes(before,after) {
  return operations;
 }
 function markDirty(){dirty=true;setStatus('保存中…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>save().catch(()=>{}),650)}
-function save(){
+function save(forceCurrent=false){
+ const current=forceCurrent?{id:view==='templates'?null:activeId,path:activeFile}:null;
  clearTimeout(saveTimer);
  saveChain=saveChain.catch(()=>{}).then(async()=>{
-  if(!dirty)return;
+  if(!dirty&&!current)return;
   const snapshot=structuredClone(state),operations=changes(baseline,snapshot);
+  // 手动保存始终提交当前文本；即使网页内容没变，也以网页版本覆盖文件。
+  if(current){
+   const files=current.id===null?snapshot.templates:snapshot.projects.find(p=>p.id===current.id)?.files;
+   const value=files?.[current.path];
+   if(value?.kind==='text'&&!operations.some(op=>op.type==='write'&&op.id===current.id&&op.path===current.path))operations.push({type:'write',...current,value});
+  }
   if(operations.length){
-   const result=await api('save',{revision,operations});revision=result.revision;
+   await api('save',{operations});
    // 重命名后的远程资源仍留在手机，下次操作从新路径读取。
    for(const op of operations.filter(op=>op.type==='write'&&op.value.kind==='remote')){
     const old=op.value.sourcePath;
@@ -68,7 +75,7 @@ function save(){
  return saveChain;
 }
 async function startWorkspace(){
- state=await api('state');revision=state.revision;baseline=structuredClone(state);
+ state=await api('state');baseline=structuredClone(state);
  TEMPLATES=Object.fromEntries(state.protectedTemplates.map(path=>[path,true]));
  activeId=state.projects[0]?.id;view=activeId?'editor':'projects';dirty=false;render();
 }
@@ -83,6 +90,7 @@ function selectFile(path){rememberEditor();currentFolder=path.includes('/')?path
 function openTemplates(){rememberWorkspace();view='templates';const mem=tabMemory.get('templates');activeFile=mem?.activeFile||'index.html';openFiles=mem?.openFiles||['index.html'];currentFolder='';render()}
 const ib=(action,name,title,extra='')=>`<button type="button" class="icon-btn" data-action="${action}" title="${title}" aria-label="${title}" ${extra}>${icon(name)}</button>`;
 function render(){
+ globalThis.EditorCompletion?.detach();
  const isDashboard=view==='projects', isTemplates=view==='templates', isDatabase=view==='database', isIcons=view==='icons';
  $('#app').innerHTML=`<aside class="rail"><svg class="mark" viewBox="0 0 276 260" role="img" aria-label="S View"><path d="${MARK}"/></svg><button class="rail-button ${!isTemplates&&!isDatabase&&!isIcons?'active':''}" data-action="projects" title="项目" aria-label="项目">${icon('folders')}</button><button class="rail-button ${isTemplates?'active':''}" data-action="templates" title="模板文件" aria-label="模板文件">${icon('file-code')}</button><button class="rail-button ${isDatabase?'active':''}" data-action="database" title="共享数据库" aria-label="共享数据库">${icon('database')}</button><button class="rail-button ${isIcons?'active':''}" data-action="icon-gallery" title="图标库" aria-label="图标库">${icon('grid')}</button><div class="rail-spacer"></div><button class="rail-button" data-action="about" title="关于工作区" aria-label="关于工作区">${icon('info')}</button><span class="rail-bottom">S VIEW</span></aside>
  <main class="shell"><header class="topbar"><button class="icon-btn mobile-tree" data-action="tree" title="文件" aria-label="文件">${icon('panel-left')}</button><span class="brand-name">S View</span><span class="top-slash">/</span><span class="top-title">局域网编辑器</span><div class="top-actions"><span class="saved" id="saveStatus"><i class="status-dot"></i>${dirty?'待保存':'已保存'}</span>${isDashboard||isDatabase||isIcons?'':isTemplates?`<button class="btn" data-action="download-templates">${icon('download')} 下载模板</button>`:`<button class="btn" data-action="settings">${icon('settings-2')}<span class="optional">项目设置</span></button><button class="btn primary" data-action="run">${icon('play')} 运行</button>`}</div></header>
@@ -108,12 +116,14 @@ function highlighted(text){
  let result='',last=0,m;while((m=re.exec(text))){result+=esc(text.slice(last,m.index))+`<span class="tok-${m[1]?'comment':m[2]?'string':m[3]?'keyword':'number'}">${esc(m[0])}</span>`;last=re.lastIndex}return result+esc(text.slice(last))+'\n';
 }
 function renderEditor(){
+ globalThis.EditorCompletion?.detach();
  openFiles=openFiles.filter(path=>filesNow()[path]);if(activeFile&&!filesNow()[activeFile])activeFile=openFiles[0]||Object.keys(filesNow())[0];if(activeFile&&!openFiles.includes(activeFile))openFiles.push(activeFile);
  const file=filesNow()[activeFile], name=activeFile||'未打开文件';
  $('#editor').innerHTML=`<div class="tabs">${openFiles.map(path=>`<button class="file-tab ${path===activeFile?'active':''}" data-action="file" data-path="${esc(path)}">${icon(fileIcon(path))}<span>${esc(baseName(path))}</span><span class="tab-close" role="button" tabindex="0" data-action="close-tab" data-path="${esc(path)}" aria-label="关闭 ${esc(path)}">×</span></button>`).join('')}${view==='editor'?`<div class="tab-tools"><button class="btn variable-trigger" data-action="project-variables">${icon('variable')} 全局变量 <span class="count-badge">${projectNow()?.variables?.length||0}</span></button></div>`:''}</div><div class="editor-toolbar">${icon(view==='templates'?'layers':'folder')}<span>${esc(view==='templates'?'模板文件':projectNow()?.name)}</span>${icon('chevron-right')}<span>${esc(name)}</span><div class="tools">${ib('undo','undo-2','撤销')}${ib('redo','redo-2','重做')}${ib('save','save','保存（⌘/Ctrl S）')}${ib('download-file','download','下载当前文件',file?'':'disabled')}</div></div>${!file?'<div class="binary">选择或新建一个文件</div>':file.kind==='text'?`<div class="code-wrap"><div class="gutter" id="gutter"></div><div class="code-scroll"><pre class="highlight" id="highlight" aria-hidden="true"></pre><textarea id="code" class="code-input" aria-label="代码编辑器" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea></div></div>`:`<div class="binary">${file.kind==='binary'&&file.mime?.startsWith('image/')?`<img src="${esc(file.data)}" alt="${esc(name)}">`:icon('file-text')}<p>${esc(baseName(name))} · ${humanSize(file.kind==='remote'?file.size:fileBytes(file).length)}</p><button class="btn" data-action="download-file">${icon('download')} 下载文件</button></div>`}<div class="editor-status"><span id="cursorStatus">行 1，列 1</span><span>${language(name)}</span><span>UTF-8</span><span>LF</span></div>`;
  const el=$('#code');if(!el)return;
  el.value=file.text;el.setSelectionRange(0,0);updateHighlight();const pos=positions.get(fileKey());if(pos){el.setSelectionRange(pos.start,pos.end);el.scrollTop=pos.top;el.scrollLeft=pos.left;syncScroll()}
  el.addEventListener('input',()=>commitText(el.value));el.addEventListener('keydown',editorKey);el.addEventListener('scroll',syncScroll);el.addEventListener('click',cursorStatus);el.addEventListener('keyup',cursorStatus);el.addEventListener('select',cursorStatus);
+ globalThis.EditorCompletion?.attach(el,name,rememberEditor,commitText,toast);
  cursorStatus();
 }
 function updateHighlight(){const el=$('#code');if(!el)return;$('#highlight').innerHTML=highlighted(el.value);$('#gutter').textContent=Array.from({length:el.value.split('\n').length},(_,i)=>i+1).join('\n');syncScroll();cursorStatus()}
@@ -121,10 +131,57 @@ function syncScroll(){const el=$('#code');if(!el)return;$('#highlight').style.tr
 function cursorStatus(){const el=$('#code');if(!el)return;const prefix=el.value.slice(0,el.selectionStart);$('#cursorStatus').textContent=`行 ${prefix.split('\n').length}，列 ${prefix.length-prefix.lastIndexOf('\n')}`}
 function commitText(text,history=true){const file=filesNow()[activeFile];if(!file||file.kind!=='text')return;if(file.text!==text){if(history){const k=fileKey(),h=undo.get(k)||[];h.push({text:file.text,pos:positions.get(k)?.start??$('#code').selectionStart});while(h.length>80||h.reduce((n,v)=>n+v.text.length,0)>1000000)h.shift();undo.set(k,h);redo.set(k,[])}file.text=text;if(projectNow()&&view!=='templates')projectNow().updated=Date.now();markDirty()}updateHighlight();rememberEditor()}
 function historyMove(back){const k=fileKey(),from=(back?undo:redo).get(k)||[],to=(back?redo:undo).get(k)||[];if(!from.length)return;const el=$('#code');if(!el)return;to.push({text:el.value,pos:el.selectionStart});(back?redo:undo).set(k,to);const entry=from.pop();el.value=entry.text;el.setSelectionRange(entry.pos,entry.pos);commitText(entry.text,false);el.focus()}
-function editorKey(e){const el=e.currentTarget;if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();historyMove(!e.shiftKey);return}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='y'){e.preventDefault();historyMove(false);return}if(e.key!=='Tab'&&e.key!=='Enter')return;e.preventDefault();const start=el.selectionStart,end=el.selectionEnd,prefix=el.value.slice(0,start).split('\n').pop(),indent=prefix.match(/^[\t ]*/)[0];let insertion=e.key==='Tab'?'    ':'\n'+indent;let caret=insertion.length;
- if(e.key==='Enter'&&/[{[(]\s*$/.test(prefix)){insertion+='    ';caret=insertion.length;const pairs={'{':'}','[':']','(':')'};if(el.value.slice(end).trimStart().startsWith(pairs[prefix.trimEnd().slice(-1)]))insertion+='\n'+indent}
+/** 对选区覆盖的行统一增减四空格缩进；末端恰好位于下一行行首时不改动该行。 */
+function indentSelection(value,start,end,outdent){
+ if(start===end&&!outdent)return {text:value.slice(0,start)+'    '+value.slice(end),start:start+4,end:start+4};
+ const first=value.slice(0,start).lastIndexOf('\n')+1;
+ const last=value.indexOf('\n',end>start?end-1:end);
+ const limit=last<0?value.length:last;
+ const lines=value.slice(first,limit).split('\n'),edits=[];
+ let offset=first;
+ const replacement=lines.map(line=>{
+  const removed=outdent?(line.match(/^(?:\t| {1,4})/)?.[0].length||0):0;
+  const added=outdent?'':'    ';
+  edits.push({offset,removed,added:added.length});offset+=line.length+1;
+  return added+line.slice(removed);
+ }).join('\n');
+ const move=(position,isStart)=>{
+  let delta=0;
+  for(const edit of edits){
+   if(edit.offset>position)break;
+   delta+=edit.added-(Math.min(edit.removed,position-edit.offset));
+   if(isStart&&position===edit.offset)delta-=edit.added;
+  }
+  return position+delta;
+ };
+ return {text:value.slice(0,first)+replacement+value.slice(limit),start:move(start,true),end:move(end,false)};
+}
+
+/** Tab 修改整组选中行，Enter 延续当前缩进；一次操作只写入一条撤销记录。 */
+function editorKey(e){
+ const el=e.currentTarget;
+ if(globalThis.EditorCompletion?.handleKey(e))return;
+ if(e.isComposing)return;
+ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();historyMove(!e.shiftKey);return}
+ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='y'){e.preventDefault();historyMove(false);return}
+ if(e.key!=='Tab'&&e.key!=='Enter')return;
+ e.preventDefault();rememberEditor();
+ const start=el.selectionStart,end=el.selectionEnd;
+ if(e.key==='Tab'){
+  const direction=el.selectionDirection,top=el.scrollTop,left=el.scrollLeft;
+  const change=indentSelection(el.value,start,end,e.shiftKey);
+  el.value=change.text;el.setSelectionRange(change.start,change.end,direction);
+  el.scrollTop=top;el.scrollLeft=left;commitText(el.value);return;
+ }
+ const prefix=el.value.slice(0,start).split('\n').pop(),indent=prefix.match(/^[\t ]*/)[0];
+ let insertion='\n'+indent,caret=insertion.length;
+ if(/[{[(]\s*$/.test(prefix)){
+  insertion+='    ';caret=insertion.length;const pairs={'{':'}','[':']','(':')'};
+  if(el.value.slice(end).trimStart().startsWith(pairs[prefix.trimEnd().slice(-1)]))insertion+='\n'+indent;
+ }
  el.setRangeText(insertion,start,end,'end');el.setSelectionRange(start+caret,start+caret);commitText(el.value);
 }
+
 function renderDashboard(){const filtered=state.projects.filter(p=>(!category||p.category===category)&&p.name.toLowerCase().includes(query.toLowerCase()));$('#dashboard').innerHTML=`<div class="dashboard-head"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>你的项目 <span style="color:#adb5c2;font-size:16px;font-weight:400;margin-left:8px">${state.projects.length}</span></h1></div><div class="dashboard-tools"><label class="searchbox">${icon('search')}<input id="projectSearch" value="${esc(query)}" placeholder="搜索项目" aria-label="搜索项目"></label><button class="btn" data-action="categories">${icon('folders')} 分类</button><button class="btn primary" data-action="new-project">${icon('plus')} 新建项目</button></div></div><div class="category-tabs">${['',...state.categories].map(c=>`<button data-action="category" data-category="${esc(c)}" class="${category===c?'active':''}">${esc(c||'全部')}</button>`).join('')}</div><div class="project-grid">${filtered.map(p=>`<article class="project-card"><button class="card-art" style="background:${/^#[0-9a-f]{6}$/i.test(p.colorCss)?p.colorCss:'#eaf0ff'};width:100%" data-action="open-project" data-id="${p.id}" aria-label="编辑 ${esc(p.name)}">${icon(p.icon||'code')}</button><div class="card-title"><span>${esc(p.name)}</span>${ib('project-settings','settings-2','项目设置',`data-id="${p.id}"`)}</div><div class="card-meta">${esc(p.category||'未分类')} <span style="margin:0 7px;color:#d1d6df">/</span> ${Object.keys(p.files).length} 个文件</div><div class="card-actions"><button data-action="open-project" data-id="${p.id}">${icon('code')} 编辑项目</button><div class="card-icon-actions">${ib('export-project','download','下载项目 ZIP',`data-id="${p.id}"`)}${ib('delete-project','trash','删除项目',`data-id="${p.id}"`)}</div></div></article>`).join('')}</div>${!filtered.length?`<div class="empty">${icon('folders')}没有找到项目</div>`:''}`}
 function modal(title,content,submit,onSubmit,label='保存'){
  $('#modalBody').innerHTML=`<header class="modal-head"><h2>${title}</h2>${ib('close-modal','x','关闭')}</header><div class="modal-content">${content}<div class="form-error" id="formError" role="alert"></div></div><footer class="modal-foot"><button type="button" class="btn" data-action="close-modal">取消</button>${submit?`<button class="btn primary" type="submit">${label}</button>`:''}</footer>`;
@@ -180,7 +237,7 @@ const actions={
  'delete-file':el=>deleteFile(el.dataset.path),'delete-folder':el=>deleteFolder(el.dataset.path),'rename-file':el=>renameFile(el.dataset.path),
  'close-tab'(el){const path=el.dataset.path;openFiles=openFiles.filter(x=>x!==path);if(activeFile===path)activeFile=openFiles.at(-1);renderEditor();renderTree()},
  'download-file':downloadFile,'export-project':el=>exportProject(el.dataset.id),async 'download-templates'(){try{await save();download(await api('export',{id:null},true),'S-View-templates.zip')}catch(error){toast(error.message)}},
- save(){save().then(()=>toast('已保存到手机')).catch(()=>{})},undo:()=>historyMove(true),redo:()=>historyMove(false),
+ save(){save(true).then(()=>toast('已保存到手机')).catch(()=>{})},undo:()=>historyMove(true),redo:()=>historyMove(false),
  async run(){const id=activeId;try{await save();await api('run',{id});toast('已在手机运行')}catch(error){toast(error.message)}},
  'close-modal':()=>$('#modal').close(),tree(){document.querySelector('.explorer')?.classList.toggle('mobile-open')},
  about(){modal('关于工作区',`<p class="confirm-text">S View 网页编辑器</p><p class="muted-note">修改自动保存到手机。运行按钮会在手机上打开当前项目。</p><p class="muted-note">请保持手机应用在前台；离开应用或停止服务后连接将断开。</p>`,false,()=>{})}

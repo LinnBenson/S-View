@@ -78,7 +78,7 @@ class LanHttpServer(
             require(ended && headers["transfer-encoding"] == null)
             val path = request[1]
             if (request[0] == "GET" && path in ASSETS) {
-                val mime = when { path.endsWith(".js") -> "text/javascript"; path.endsWith(".css") -> "text/css"; else -> "text/html" }
+                val mime = when { path.endsWith(".js") -> "text/javascript"; path.endsWith(".css") -> "text/css"; path.endsWith(".json") -> "application/json"; else -> "text/html" }
                 val asset = if (path == "/") "index.html" else path.drop(1)
                 respond(socket, LanResponse(bytes = context.assets.open(if (path == "/lucide.js") "templates/lucide-1.77.0.js" else "lan-editor/$asset").use { it.readBytes() }, mime = "$mime; charset=utf-8"))
                 return
@@ -162,7 +162,8 @@ class LanHttpServer(
 
     companion object {
         private const val MAX_BODY = 24 * 1024 * 1024
-        private val ASSETS = setOf("/", "/index.html", "/style.css", "/icons.js", "/app.js", "/variables.js", "/icon-gallery.js", "/lucide.js")
+        private val ASSETS = setOf("/", "/index.html", "/style.css", "/icons.js", "/app.js", "/variables.js", "/icon-gallery.js", "/lucide.js",
+            "/completion-engine.js", "/completion.js", "/completion.css", "/completion-css.json", "/completion-sview.json")
     }
 }
 

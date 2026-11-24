@@ -7,33 +7,19 @@ import io.todu.sview.data.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.security.MessageDigest
 
 /** 在工作区 IO 锁内调用，网页与手机共用配置、资源与运行缓存。 */
 class LanWorkspace(private val repository: ProjectRepository, private val cache: File) {
     private val textExtensions = setOf("js", "mjs", "cjs", "css", "html", "htm", "json", "txt", "md", "svg", "xml", "csv", "yaml", "yml")
 
-    /** 修订号覆盖配置和文件元数据，另一端改动后拒绝旧版本写入。 */
-    private data class Entry(val file: File, val path: String, val size: Long, val modified: Long, val directory: Boolean)
+    /** 一次遍历生成文件清单，供网页快照读取。 */
+    private data class Entry(val file: File, val path: String, val directory: Boolean)
     private fun scan(projects: List<Project>): Map<File, List<Entry>> =
         (listOf(repository.templates) + projects.map { repository.root(it.id) }).associateWith { root ->
             root.walkTopDown().sortedBy { it.path }.map {
-                Entry(it, it.relativeTo(root).invariantSeparatorsPath, it.length(), it.lastModified(), it.isDirectory)
+                Entry(it, it.relativeTo(root).invariantSeparatorsPath, it.isDirectory)
             }.toList()
         }
-
-    fun revision(projects: List<Project>, categories: List<String>): String = revision(projects, categories, scan(projects))
-
-    private fun revision(projects: List<Project>, categories: List<String>, inventory: Map<File, List<Entry>>): String {
-        val hash = MessageDigest.getInstance("SHA-256")
-        fun add(text: String) { hash.update(text.toByteArray()); hash.update(0.toByte()) }
-        add(JSONArray(categories).toString())
-        projects.forEach { add(ProjectJson.encode(it).toString()) }
-        inventory.values.forEach { entries -> entries.forEach { entry ->
-            add(entry.path); add(entry.size.toString()); add(entry.modified.toString())
-        } }
-        return hash.digest().joinToString("") { "%02x".format(it) }
-    }
 
     fun snapshot(projects: List<Project>, categories: List<String>): JSONObject {
         val scanned = scan(projects)
@@ -55,7 +41,7 @@ class LanWorkspace(private val repository: ProjectRepository, private val cache:
             return files to folders
         }
         val (templates, folders) = inventory(repository.templates)
-        return JSONObject().put("revision", revision(projects, categories, scanned)).put("categories", JSONArray(categories))
+        return JSONObject().put("categories", JSONArray(categories))
             .put("templates", templates).put("templateFolders", folders)
             .put("projects", JSONArray().apply {
                 projects.forEach { project ->
@@ -98,9 +84,8 @@ class LanWorkspace(private val repository: ProjectRepository, private val cache:
             backdropTransparency = json.optDouble("backdropTransparency", base.backdropTransparency))
     }
 
-    /** 失败时恢复已触及的源文件与配置，备份只覆盖修改范围。 */
+    /** 网页提交的修改直接覆盖对应文件；失败时仅恢复本次触及的文件与配置。 */
     fun apply(body: JSONObject, projects: List<Project>, categories: List<String>): Pair<List<Project>, List<String>> {
-        require(body.getString("revision") == revision(projects, categories)) { "工作区已在其他位置修改，请下载未保存文件后刷新网页" }
         val next = projects.toMutableList()
         var nextCategories = categories
         val operations = body.getJSONArray("operations")

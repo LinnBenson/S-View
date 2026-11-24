@@ -223,9 +223,9 @@ class ProjectServer(private val repository: ProjectRepository, private val proje
 
     private fun apiExecutor(method: String): ThreadPoolExecutor = when (method) {
         "interaction.close", "interaction.closeThis", "network.hotspot.close", "network.localServer.close", "network.server.close",
-        "system.nfc.close", "system.cancelVibration" -> controlWorkers
+        "system.nfc.close", "system.cancelVibration", "network.scanPorts.close" -> controlWorkers
         "system.getLocation", "system.scanWifi", "system.scanBluetooth", "system.getHealthInfo", "system.install",
-        "network.hotspot", "interaction.preview", "resource.openDevice", "script.log" -> slowApiWorkers
+        "network.scanPorts.next", "network.hotspot", "interaction.preview", "resource.openDevice", "script.log" -> slowApiWorkers
         else -> apiWorkers
     }
 

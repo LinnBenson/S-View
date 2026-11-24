@@ -20,6 +20,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val applicationContext = context.applicationContext
     private val customServers = CustomServerApiBridge(context, repository, project.id, localServerEvent)
     private val localServers = LocalServerApiBridge(context, localServerEvent)
+    private val portScans = PortScanApiBridge(context)
     private val hotspot = HotspotApiBridge(context, foreground, localServerEvent)
     private val notifyMonitor = NotifyMonitorApiBridge(applicationContext, notifyMonitorEvent)
     private val nfc = NfcApiBridge(context, foreground, nfcEvent)
@@ -33,6 +34,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
 
     fun invoke(request: JSONObject): JSONObject = when {
         request.optString("method") == "script.isWatch" -> deviceType()
+        request.optString("method").startsWith("network.scanPorts") -> portScans.invoke(request)
         request.optString("method") == "network.interface" -> NetworkInterfaceApiBridge.invoke()
         request.optString("method") in listOf("network.server", "network.server.close") -> customServers.invoke(request)
         request.optString("method") == "resource.openDevice" -> deviceLinks.invoke(request)
@@ -63,6 +65,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     override fun close() {
         cleanupResource("自定义服务器") { customServers.close() }
         cleanupResource("局域网服务") { localServers.close() }
+        cleanupResource("端口扫描") { portScans.close() }
         cleanupResource("本地热点") { hotspot.close() }
         nfc.close()
         cleanupResource("通知监听") { notifyMonitor.close() }

@@ -88,7 +88,9 @@ document.querySelector('#count').addEventListener('click', (event) => {
 
 项目编辑器右上角可管理当前项目的全局变量。点击“运行”会先保存，再在手机上运行项目；网页本身不提供运行预览。
 
-切换应用后仍可编辑文件，通知中可停止服务；主动退出或移除任务时停止。网页运行项目时需将手机应用切回前台。连接使用 HTTP，应只在可信网络中开启。另一端修改工作区后，旧网页会拒绝覆盖保存；请先下载需要保留的未保存文件，再刷新页面。
+切换应用后仍可编辑文件，通知中可停止服务；主动退出或移除任务时停止。网页运行项目时需将手机应用切回前台。连接使用 HTTP，应只在可信网络中开启。网页保存直接覆盖本次修改的文件；点击保存或按 ⌘/Ctrl+S 时，当前文本也会重新写入。选中多行后，Tab 增加缩进，Shift+Tab 减少缩进。
+
+代码编辑支持离线 JS、CSS 和 S View 接口补全；输入前缀或点号时显示候选，也可按 Ctrl+Space 呼出。方向键选择、Enter 插入、Esc 关闭，Tab 始终用于缩进。HTML 的 `<script>`、`<style>` 和 `style` 属性也支持对应补全。补全根据文本位置及浏览器提供的原生接口生成，不执行项目代码，不提供完整的跨文件类型分析；超过 20 万字符的文件不启用补全。
 
 网页单文件传输上限为 16 MB，文本直接编辑上限为 2 MB，项目 ZIP 导出上限为 64 MB。较大的项目可在手机端导出。
 
@@ -134,7 +136,7 @@ document.querySelector('#count').addEventListener('click', (event) => {
 | `sview.system` | 设备和屏幕信息、通知、震动、定位、蓝牙、Wi-Fi、NFC、健康记录等 |
 | `sview.interaction` | 运行窗口控制、图片预览、运行事件监听 |
 | `sview.storage` | 文件与目录读写、复制、流式处理 |
-| `sview.network` | 原生网络请求、本地热点、聊天及上传服务器 |
+| `sview.network` | 原生网络请求、TCP 端口扫描、本地热点、聊天及上传服务器 |
 | `sview.script` | 共享数据库、接收分享内容等 |
 
 需要权限的能力，请先在「设置 → 权限」中授权。设备硬件、Android 版本和系统服务会影响接口可用性，手机支持的能力不一定在手表上可用。
@@ -260,6 +262,7 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 | --- | --- |
 | GeckoView | Mozilla Public License 2.0 |
 | Lucide | ISC |
+| MDN CSS 补全数据 | CC0 1.0 |
 | jQuery | MIT |
 | Alpine.js 及其 Vue 响应式模块 | MIT |
 | JetBrains Mono | SIL Open Font License |
@@ -276,3 +279,5 @@ S View 以 [Apache License 2.0](LICENSE) 发布。第三方组件及资源仍遵
 手机和手表均可在设置 → 权限中授权麦克风和相机。项目页面在前台调用 `navigator.mediaDevices.getUserMedia({ audio: true })` 采集音频，或传入 `video: true` 使用相机；可用标准 `MediaRecorder` 录制。设备必须具备对应硬件。
 
 `MediaRecorder.stop()` 只结束录制，还应对 `stream.getTracks()` 中的轨道调用 `stop()` 释放设备。运行窗口关闭时会销毁网页会话，原生兜底释放采集；需要保留的录音应在关窗前保存。只授权当前项目的本地来源，不授权外部网页；不提供后台采集保活，格式和设备约束以浏览器实际支持为准。
+
+CSS 补全数据的来源和再生成方式见 [补全数据来源](app/src/main/assets/lan-editor/补全数据来源.md)。

@@ -1,7 +1,7 @@
 package io.todu.sview.ui.screens
 
 /** 原生请求及其链式方法，所有示例均使用同一个 sview.network 入口。 */
-internal val networkInterfaceHelp = listOf(
+internal val networkInterfaceHelp = portScanHelp + listOf(
     InterfaceHelpEntry(
         name = "sview.network.interface",
         brief = "列出网卡接口",

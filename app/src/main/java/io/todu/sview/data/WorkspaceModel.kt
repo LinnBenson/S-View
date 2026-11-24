@@ -698,7 +698,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
                                 runCatching { BrowserEngine.clearProject(getApplication(), id) }
                                     .onFailure { error = "项目已删除，但网页存储清理失败：${it.message}" }
                             }
-                            io { io.todu.sview.lan.LanResponse.json(org.json.JSONObject().put("revision", lanWorkspace.revision(projects, categories))) }
+                            io { io.todu.sview.lan.LanResponse.json(org.json.JSONObject()) }
                         }
                         "file" -> io {
                             val id = if (body.isNull("id")) null else body.getString("id")
