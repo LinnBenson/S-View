@@ -81,6 +81,9 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     var runtimeHeight by remember(project.id) { mutableStateOf(project.height) }
     var server by remember(project.id) { mutableStateOf<ProjectServer?>(null) }
     var session by remember(project.id) { mutableStateOf<GeckoSession?>(null) }
+    val webPrompts = remember(project.id) {
+        io.todu.sview.runtime.prompts.WebPromptController(repository, project.id)
+    }
     val mediaPermissions = remember(project.id) {
         WebMediaPermissions(context, { server?.uri }, {
             !closing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
@@ -148,9 +151,11 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
         val oldServer = server
         session = null
         server = null
+        cleanupResource("网页提示") { webPrompts.close() }
         cleanupResource("网页媒体授权") { mediaPermissions.close() }
         cleanupResource("系统接口") { systemApi.close() }
         oldSession?.let {
+            cleanupResource("网页提示回调") { it.promptDelegate = null }
             cleanupResource("网页媒体回调") { it.permissionDelegate = null }
             cleanupResource("页面进度监听") { it.progressDelegate = null }
             cleanupResource("页面内容监听") { it.contentDelegate = null }
@@ -203,6 +208,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
                 val opened = BrowserEngine.openSession(context, project.id, overlay = overlay != null)
                 session = opened
                 opened.apply {
+                    promptDelegate = webPrompts
                     permissionDelegate = mediaPermissions
                     progressDelegate = object : GeckoSession.ProgressDelegate {
                         override fun onPageStart(session: GeckoSession, url: String) { pageLoaded = false; pageSucceeded = false; server?.events?.pageStarted() }
@@ -249,14 +255,18 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
         }
     }
     val transparentBackdrop = project.backdropTransparency == 100.0
+    val dismissTopmost: () -> Unit = {
+        val prompt = webPrompts.active
+        if (prompt != null) prompt.cancel() else closeWindow()
+    }
     val closeFromClick: () -> Unit = {
-        if (!closing) {
+        if (!closing && webPrompts.active == null) {
             if (watch) io.todu.sview.device.DeviceVibration.click(context)
             else haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            closeWindow()
+            dismissTopmost()
         }
     }
-    RuntimeWindowHost(project.backdropTransparency, closeWindow, closeFromClick) {
+    RuntimeWindowHost(project.backdropTransparency, dismissTopmost, closeFromClick) {
         if (overlay != null) SideEffect {
             runCatching { overlay.layout(runtimeWidth, runtimeHeight, runtimeMargins, runtimeLocation, project.backdropTransparency, closeFromClick) }
                 .onFailure { onError(it.message ?: "无法显示悬浮窗口"); onClose() }
@@ -320,6 +330,10 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
                 }
             }
         }
+        }
+        // 提示放在项目尺寸和圆角之外；手表即使运行小窗口，选择器也占满承载屏幕。
+        webPrompts.active?.let { request ->
+            key(request.id) { io.todu.sview.runtime.prompts.WebPromptContent(request) }
         }
     }
 }

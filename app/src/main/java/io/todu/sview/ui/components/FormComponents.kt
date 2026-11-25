@@ -32,22 +32,30 @@ import androidx.compose.ui.window.DialogProperties
 fun AppDialog(onDismissRequest: () -> Unit, title: @Composable () -> Unit,
     text: (@Composable () -> Unit)? = null, confirmButton: @Composable () -> Unit,
     dismissButton: (@Composable () -> Unit)? = null, maxWidth: Dp = 440.dp) {
-    val widthLimit = maxWidth
     Dialog(onDismissRequest, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
-            Column(Modifier.width(minOf(this.maxWidth, widthLimit)).heightIn(max = maxHeight)
-                .clip(RoundedCornerShape(20.dp)).background(Color.White).border(1.dp, Line, RoundedCornerShape(20.dp))) {
-                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { ProvideTextStyle(TextStyle(color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium), title) }
-                    IconAction("x", "关闭弹窗", onDismissRequest)
-                }
-                if (text != null) Box(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    ProvideTextStyle(TextStyle(color = Ink, fontSize = 14.sp, lineHeight = 22.sp), text)
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                    dismissButton?.invoke()
-                    confirmButton()
-                }
+        AppDialogContent(onDismissRequest, title, text, confirmButton, dismissButton, maxWidth)
+    }
+}
+
+/** 弹窗内容与系统窗口分开，网页提示可在原界面复用同一套布局，不抢走网页焦点。 */
+@Composable
+fun AppDialogContent(onDismissRequest: () -> Unit, title: @Composable () -> Unit,
+    text: (@Composable () -> Unit)? = null, confirmButton: @Composable () -> Unit,
+    dismissButton: (@Composable () -> Unit)? = null, maxWidth: Dp = 440.dp, modifier: Modifier = Modifier) {
+    val widthLimit = maxWidth
+    BoxWithConstraints(modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
+        Column(Modifier.width(minOf(this.maxWidth, widthLimit)).heightIn(max = maxHeight)
+            .clip(RoundedCornerShape(20.dp)).background(Color.White).border(1.dp, Line, RoundedCornerShape(20.dp))) {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { ProvideTextStyle(TextStyle(color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium), title) }
+                IconAction("x", "关闭弹窗", onDismissRequest)
+            }
+            if (text != null) Box(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
+                ProvideTextStyle(TextStyle(color = Ink, fontSize = 14.sp, lineHeight = 22.sp), text)
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                dismissButton?.invoke()
+                confirmButton()
             }
         }
     }
@@ -58,17 +66,18 @@ fun AppDialog(onDismissRequest: () -> Unit, title: @Composable () -> Unit,
 fun AppTextField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
     label: (@Composable () -> Unit)? = null, singleLine: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default, enabled: Boolean = true,
-    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None) {
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    containerColor: Color = Panel, textColor: Color = Ink, outlineColor: Color = Line) {
     var focused by remember { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (label != null) CompositionLocalProvider(LocalContentColor provides Muted) {
             ProvideTextStyle(TextStyle(fontSize = 12.sp, color = Muted), label)
         }
         BasicTextField(value, onValueChange,
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Panel)
-                .border(1.dp, if (focused) Blue.copy(alpha = .55f) else Line, RoundedCornerShape(10.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(containerColor)
+                .border(1.dp, if (focused) Blue.copy(alpha = .55f) else outlineColor, RoundedCornerShape(10.dp))
                 .onFocusChanged { focused = it.isFocused }.padding(horizontal = 13.dp, vertical = 12.dp),
-            textStyle = TextStyle(color = Ink, fontSize = 14.sp, lineHeight = 21.sp),
+            textStyle = TextStyle(color = textColor, fontSize = 14.sp, lineHeight = 21.sp),
             cursorBrush = SolidColor(Blue), singleLine = singleLine, keyboardOptions = keyboardOptions,
             enabled = enabled, visualTransformation = visualTransformation,
             minLines = if (singleLine) 1 else 2, maxLines = if (singleLine) 1 else 5)
@@ -86,7 +95,7 @@ fun DialogAction(label: String, onClick: () -> Unit, primary: Boolean = false) {
     }
     val icon = when (label) {
         "创建", "添加" -> "plus"
-        "保存", "还原" -> "check"
+        "保存", "还原", "确定" -> "check"
         "删除", "清除" -> "trash"
         else -> "x"
     }
