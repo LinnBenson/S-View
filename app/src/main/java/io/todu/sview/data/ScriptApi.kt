@@ -16,6 +16,7 @@ object ScriptApi {
             if (!result.ok) throw Object.assign(new Error(result.error), { code: result.code || 'INTERNAL_ERROR' });
             return result.value;
         }
+        ${ScriptCode.SCRIPT}
         ${ScriptErrorHandling.SCRIPT}
         ${ScriptLogApi.SCRIPT}
         ${ScriptMonitor.SCRIPT}
@@ -75,6 +76,7 @@ object ScriptApi {
                 async resize(width, height, persist = false) { await call('interaction.resize', { width, height, persist }); }
             },
             script: {
+                code: readScriptCode,
                 isWatch() { return call('script.isWatch', {}); },
                 md5(text) { return call('script.md5', { text }); },
                 qrcode(text) { return call('script.qrcode', { text }); },

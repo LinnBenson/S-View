@@ -25,6 +25,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val notifyMonitor = NotifyMonitorApiBridge(applicationContext, notifyMonitorEvent)
     private val nfc = NfcApiBridge(context, foreground, nfcEvent)
     private val database = DatabaseApiBridge(context)
+    private val code = ScriptCodeApiBridge(repository, project.id)
     private val textTools = ScriptTextApiBridge()
     private val logs = ScriptLogApiBridge(context, project.id)
     private val system = SystemApiBridge(context, project, foreground)
@@ -33,6 +34,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val interaction = InteractionApiBridge(resize, dismiss, location, removeClose, margin, cornerRadius, preview::open, exitApplication)
 
     fun invoke(request: JSONObject): JSONObject = when {
+        request.optString("method") == "script.code" -> code.invoke(request)
         request.optString("method") == "script.isWatch" -> deviceType()
         request.optString("method").startsWith("network.scanPorts") -> portScans.invoke(request)
         request.optString("method") == "network.interface" -> NetworkInterfaceApiBridge.invoke()

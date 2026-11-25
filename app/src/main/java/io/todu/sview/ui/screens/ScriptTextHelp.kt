@@ -3,6 +3,25 @@ package io.todu.sview.ui.screens
 /** 文本工具使用本机计算，返回值可直接用于脚本和网页。 */
 internal val scriptTextHelp = listOf(
     InterfaceHelpEntry(
+        name = "sview.script.code",
+        brief = "同步读取并替换文本模板",
+        summary = "先查找全局模板，再查找项目资源；读取 UTF-8 原文，不执行代码，不注入运行脚本。",
+        parameters = listOf(
+            InterfaceParameter("file", "string", true, "本地文件路径，如 /templates/card.html 或 templates/card.html。相对于资源根目录，不支持网络地址和设备文件地址。"),
+            InterfaceParameter("replace", "object | array", false, "默认 {}。支持嵌套对象和多维数组，例如 {{a.title}}、{{items.0.name}}、{{matrix.0.1}}。")
+        ),
+        resultType = "string",
+        result = "同步返回替换后的文本，无需 await；两处均找不到文件时返回空字符串。仅替换字符串和数字，其余值或不存在的路径保留原占位符。",
+        failure = "参数或路径非法、路径越界、目标为目录、文件读取失败或运行连接不可用时直接抛出错误。",
+        example = """// /templates/card.html：<h2>{{title}}</h2><p>{{rows.0.1}}</p>
+const html = sview.script.code('/templates/card.html', {
+  title: '专注计时', rows: [['分钟', 25]]
+});
+content('main#app', `<div>${'$'}{html}</div>`);""",
+        note = "全局同名文件优先。占位符两端可留空格，只读取对象自身属性，不执行表达式；替换只进行一轮，原样插入且不转义 HTML。适合小型文本模板，避免在动画或高频刷新中反复同步读取。",
+        category = "脚本",
+    ),
+    InterfaceHelpEntry(
         name = "sview.script.md5",
         brief = "计算文本 MD5",
         summary = "按 UTF-8 编码计算文本的 MD5，不添加换行，不改变空白。",

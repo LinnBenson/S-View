@@ -65,3 +65,9 @@ sview.system.notifyMonitor 使用当前运行窗口的事件连接传递 start�
 WebMediaPermissions 接入实际 GeckoSession.PermissionDelegate，仅接受 RECORD_AUDIO、CAMERA 以及当前 ProjectServer 来源的麦克风和摄像头请求。Android 权限由手机和手表设置页统一申请，网页请求同步核验，不保存授权回调，也不创建线程或长期任务；屏幕采集和其他权限不放行。设备顺序沿用 Gecko 对 constraints 的筛选结果。
 
 窗口关闭先将授权代理标记为关闭、清空 permissionDelegate，再走原有 BrowserEngine.closeSession；GeckoSession.close 销毁原生网页窗口并释放其媒体采集。崩溃、系统终止和启动失败复用同一资源释放路径。不以网页 pagehide 或 JS Track.stop 成功作为释放前提。硬件 feature 均为可选，避免无摄像头的手表被过滤。
+
+### 同步文本模板
+
+`sview.script.code(file, replace = {})` 使用同步 XMLHttpRequest 调用当前会话的 `/__sview_api`，沿用 Cookie、Origin 与自定义请求头校验。请求只携带本地路径，不访问远端地址，也不序列化替换对象。原生接口在独立接口线程读取 UTF-8 文件，避免依赖正在等待响应的页面线程。
+
+`ScriptCodeApiBridge` 复用目录边界校验，按全局模板、项目资源顺序读取原文，不调用运行文件生成逻辑。每次读取当前文件，不保留模板缓存，修改后下次调用即可生效。缺失返回空字符串，目录、非法路径与读取失败返回结构化错误，脚本端同步抛出。占位符由 `ScriptCode` 在 JavaScript 侧单轮替换，逐级检查自身属性，仅插入字符串和数字。

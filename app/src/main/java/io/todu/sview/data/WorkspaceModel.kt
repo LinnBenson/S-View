@@ -459,11 +459,19 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
 
     var restoringTemplate by mutableStateOf(false); private set
 
-    /** 与自动保存共用 IO 队列，还原后同步编辑缓冲，避免旧内容再次写回。 */
+    /** 单文件与整组还原共用保存屏障，避免编辑器将旧内容写回。 */
     fun restoreTemplate(entry: ResourceFile) {
-        if (projectId != null || restoringTemplate || entry.directory) return
+        if (!entry.directory) restoreTemplates(listOf(entry.path))
+    }
+
+    /** 只还原内置文件清单，自建模板与项目覆盖文件保持原样。 */
+    fun restoreAllTemplates() = restoreTemplates(ReferenceCatalog.systemTemplateNames.toList())
+
+    private fun restoreTemplates(paths: List<String>) {
+        if (projectId != null || restoringTemplate) return
         restoringTemplate = true
-        val current = filePath == entry.path
+        val currentPath = filePath
+        val current = currentPath in paths
         val generation = if (current) ++fileGeneration else fileGeneration
         val wasReady = fileReady
         if (current) {
@@ -472,13 +480,16 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
         }
         task {
             try {
-                val content = io { repository.restoreTemplate(entry.path) }
-                if (current && projectId == null && generation == fileGeneration) {
-                    code = content; saved = true; editorKey++
+                for (path in paths) {
+                    val content = io { repository.restoreTemplate(path) }
+                    // 每个文件落盘后立即同步缓冲，后续文件失败也不会恢复旧编辑内容。
+                    if (current && path == currentPath && projectId == null && generation == fileGeneration) {
+                        code = content; saved = true; editorKey++
+                    }
                 }
-                if (projectId == null) refresh()
-                Toast.makeText(getApplication(), "${entry.path} 已还原", Toast.LENGTH_SHORT).show()
+                Toast.makeText(getApplication(), if (paths.size == 1) "${paths.first()} 已还原" else "系统模板已还原", Toast.LENGTH_SHORT).show()
             } finally {
+                if (projectId == null) refresh()
                 if (current && projectId == null && generation == fileGeneration) fileReady = wasReady
                 restoringTemplate = false
             }
