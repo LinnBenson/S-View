@@ -315,11 +315,11 @@ ul[switch] li.active *, ul[switch] li.active .lucide { color: rgb( var( --r3c ) 
     from { opacity: 0; transform: translateY( 24px ); }
     to { opacity: 1; transform: translateY( 0 ); }
 }
-@keyframes toRight {
+@keyframes toLeft {
     from { opacity: 0; transform: translateX( 24px ); }
     to { opacity: 1; transform: translateX( 0 ); }
 }
-@keyframes toLeft {
+@keyframes toRight {
     from { opacity: 0; transform: translateX( -24px ); }
     to { opacity: 1; transform: translateX( 0 ); }
 }

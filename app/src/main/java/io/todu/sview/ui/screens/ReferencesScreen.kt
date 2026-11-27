@@ -5,6 +5,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -44,7 +45,11 @@ fun ReferencesScreen(model: WorkspaceModel) {
     val drag = rememberReorderDragState(items = {
         list.layoutInfo.visibleItemsInfo.map { ReorderItem(it.key as String, it.index,
             IntOffset(0, it.offset), IntSize(list.layoutInfo.viewportSize.width, it.size)) }
-    }, move = { from, to -> projectId?.let { model.reorderReference(it, from, to) } },
+    }, move = { from, to -> projectId?.let {
+        // 换位时固定视口，避免列表追随原首项滚动。
+        list.requestScrollToItem(list.firstVisibleItemIndex, list.firstVisibleItemScrollOffset)
+        model.reorderReference(it, from, to)
+    } },
         finish = { model.saveProjectOrder() })
     ReorderAutoScroll(drag,
         { list.layoutInfo.viewportStartOffset.toFloat() to list.layoutInfo.viewportEndOffset.toFloat() },
@@ -56,7 +61,21 @@ fun ReferencesScreen(model: WorkspaceModel) {
         }
         if (references.isEmpty()) EmptyState("file-code", "还没有引用项", modifier = Modifier.weight(1f),
             actionLabel = "添加引用", onAction = { editing = null; visible = true })
-        else LazyColumn(state = list, modifier = Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
+        else LazyColumn(state = list, modifier = Modifier.fillMaxWidth().weight(1f)
+            .pointerInput(projectId, drag) {
+                // 在固定的列表坐标系识别手势，行的缩放、换位和回收都不会改变手指位移。
+                detectDragGesturesAfterLongPress(onDragStart = { touch ->
+                    val layout = list.layoutInfo
+                    val y = touch.y + layout.viewportStartOffset
+                    layout.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size }
+                        ?.let { drag.start(it.key as String) }
+                }, onDrag = { change, amount ->
+                    if (drag.dragging != null) {
+                        change.consume()
+                        drag.drag(Offset(0f, amount.y))
+                    }
+                }, onDragCancel = drag::end, onDragEnd = drag::end)
+            }, contentPadding = PaddingValues(vertical = 4.dp)) {
             items(references, key = { it.id }) { reference ->
                 var menu by remember { mutableStateOf(false) }
                 val lifted = drag.dragging == reference.id
@@ -68,12 +87,7 @@ fun ReferencesScreen(model: WorkspaceModel) {
                         translationX = offset.x; translationY = offset.y
                         scaleX = scale; scaleY = scale
                         shadowElevation = 0f
-                    }.background(if (lifted) Panel else Color.White, RoundedCornerShape(12.dp))
-                    .pointerInput(reference.id) {
-                        detectDragGesturesAfterLongPress(onDragStart = { drag.start(reference.id) },
-                            onDrag = { change, amount -> change.consume(); drag.drag(amount) },
-                            onDragCancel = drag::end, onDragEnd = drag::end)
-                    }) {
+                    }.background(if (lifted) Panel else Color.White, RoundedCornerShape(12.dp))) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).clickable { editing = reference; visible = true },
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Panel), contentAlignment = Alignment.Center) {
