@@ -82,6 +82,7 @@ open class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        if (io.todu.sview.runtime.background.BackgroundWindow.accept(this, intent)) return
         setIntent(intent)
         acceptShortcut(intent)
     }
@@ -132,7 +133,9 @@ open class MainActivity : ComponentActivity() {
             released = RunLifetime()
             running = project
         }
-        BackHandler(page == "home" && running == null) { finishAndRemoveTask() }
+        BackHandler(page == "home" && (running == null || io.todu.sview.runtime.background.BackgroundWindow.active != null)) {
+            io.todu.sview.runtime.RuntimeAppExit.request(applicationContext)
+        }
         var projectDialog by remember { mutableStateOf(false) }
         var editing by remember { mutableStateOf<Project?>(null) }
         var image by remember { mutableStateOf<ResourceFile?>(null) }
@@ -146,8 +149,6 @@ open class MainActivity : ComponentActivity() {
                 shortcutRequest = null
             }
             else {
-                runLock.lock()
-                try { stopRun() } finally { runLock.unlock() }
                 model.prepareRun(request.first) {
                     // 请求是此 effect 的键，准备完成前清空会取消自动运行。
                     if (shortcutRequest == request) {
@@ -180,6 +181,7 @@ open class MainActivity : ComponentActivity() {
                 check(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) { "请保持手机应用在前台" }
                 runLock.lock()
                 try {
+                    io.todu.sview.runtime.RuntimeAppExit.finishBackgroundRuns()
                     stopRun()
                     check(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) { "请保持手机应用在前台" }
                     check(model.lanEditor.running) { "服务已停止" }
@@ -201,7 +203,7 @@ open class MainActivity : ComponentActivity() {
             uris.forEach { model.importFile(it, displayName(it)) }
         }
         fun back() {
-            val destination = if (page in listOf("templates", "permissions", "logs", "interfaces", "lan", "database", "watch", "about", "help")) "settings" else "home"
+            val destination = if (page in listOf("backup", "templates", "permissions", "logs", "interfaces", "lan", "database", "watch", "about", "help")) "settings" else "home"
             if (page == "editor" || page == "templates") {
                 model.closeEditor { page = destination }
             } else {
@@ -216,7 +218,7 @@ open class MainActivity : ComponentActivity() {
                     val wide = maxWidth >= 700.dp
                     Row(Modifier.fillMaxSize()) {
                         if (wide && page in listOf("home", "settings", "permissions", "interfaces", "categories")) Column(Modifier.width(72.dp).fillMaxHeight().background(Panel), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.fillMaxWidth().height(76.dp), contentAlignment = Alignment.Center) { SViewMark() }
+                            Box(Modifier.fillMaxWidth().height(76.dp), contentAlignment = Alignment.Center) { HomeSViewMark() }
                             IconAction("folders", "项目", { page = "home" }, tint = if (page in listOf("home", "categories")) Blue else Muted)
                             IconAction("code", "系统接口", { page = "interfaces" }, tint = if (page == "interfaces") Blue else Muted)
                             Spacer(Modifier.weight(1f))
@@ -225,7 +227,8 @@ open class MainActivity : ComponentActivity() {
                         Box(Modifier.weight(1f)) {
                             if (!model.ready) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                             else if (shortcutRequest == null) when (page) {
-                                "settings" -> SettingsScreen(wide, { page = "home" }, { model.openProject(null); page = "templates" }, { page = "permissions" }, { page = "logs" }, { page = "interfaces" }, model.clearingCache, model::clearCaches, { page = "lan" }, model.lanEditor.statusText, model.lanEditor.running, { page = "database" }, { page = "watch" }, { page = "about" }, { page = "help" }, { page = "ftp" }, model.ftpEditor.statusText, model.ftpEditor.running)
+                                "settings" -> SettingsScreen(wide, { page = "home" }, { model.openProject(null); page = "templates" }, { page = "permissions" }, { page = "logs" }, { page = "interfaces" }, model.clearingCache, model::clearCaches, { page = "lan" }, model.lanEditor.statusText, model.lanEditor.running, { page = "database" }, { page = "watch" }, { page = "about" }, { page = "help" }, { page = "ftp" }, model.ftpEditor.statusText, model.ftpEditor.running) { page = "backup" }
+                                "backup" -> WorkspaceBackupScreen(model) { page = "settings" }
                                 "watch" -> io.todu.sview.wear.WatchConnectionScreen(model.watchConnection, model.projects) { page = "settings" }
                                 "help" -> UsageHelpScreen { page = "settings" }
                                 "about" -> AboutScreen { page = "settings" }
@@ -259,7 +262,7 @@ open class MainActivity : ComponentActivity() {
                 DisposableEffect(completion) { completion.mounted = true; onDispose {} }
                 RuntimeWindow(it, model.repository, { message -> model.appendLog(it, message) }, model::cornerRadiusRunProject, model::marginRunProject, model::locateRunProject, model::resizeRunProject, { message -> model.error = message }, onReleased = { completion.released.complete(Unit) }) { try { model.flushLogWrites() } finally { if (released === completion) running = null } } } }
             image?.let { entry -> ImageDialog(entry) { image = null } }
-            if (model.archiveBusy) AppDialog(onDismissRequest = {}, title = { Text("正在处理项目") },
+            if (model.archiveBusy) AppDialog(onDismissRequest = {}, title = { Text("正在处理数据") },
                 text = { LinearProgressIndicator(Modifier.fillMaxWidth()) }, confirmButton = {})
             model.archiveMessage?.let { message -> AppDialog(onDismissRequest = { model.archiveMessage = null }, title = { Text("完成") },
                 text = { Text(message) }, confirmButton = { DialogAction("确定", { model.archiveMessage = null }) }) }

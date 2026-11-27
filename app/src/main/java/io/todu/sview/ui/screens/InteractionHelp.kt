@@ -3,6 +3,19 @@ package io.todu.sview.ui.screens
 /** 运行窗口操作；尺寸默认仅在当前会话生效。 */
 internal val interactionInterfaceHelp = listOf(
     InterfaceHelpEntry(
+        name = "sview.interaction.background", brief = "收起或恢复当前运行窗口",
+        summary = "收起后保留页面和脚本，点绿色 S 标志或运行通知恢复，点停止结束本次运行。",
+        parameters = listOf(
+            InterfaceParameter("enabled", "boolean", true, "true 收起，false 恢复。"),
+            InterfaceParameter("dynamic", "boolean", false, "收起时请求系统实时展示，默认 false。设备或设置不支持时显示普通通知。")
+        ),
+        resultType = "Promise<boolean>", result = "已收起或恢复时返回 true；应用在后台时请求恢复返回 false，回到应用后自动显示。",
+        failure = "参数错误、后台运行通知未开启或服务启动失败时，Promise 拒绝。",
+        example = "await sview.interaction.background(true, true);\nsetTimeout(() => sview.interaction.background(false), 5000);",
+        note = "收起时不触发关闭回调。再次运行同一项目或启动其他项目，会先通知后台脚本关闭，再开始新的一次运行。从应用首页按返回会退出应用并结束后台脚本。宿主销毁或进程退出也会结束本次运行。",
+        category = "交互"
+    ),
+    InterfaceHelpEntry(
         name = "sview.interaction.closeThis", brief = "结束运行并退出 S View",
         summary = "关闭 S View 的运行窗口并退出应用，手机、手表和悬浮运行均支持。退出前通知脚本关闭，提交待保存内容和日志，停止悬浮运行、连接与局域网编辑器。",
         parameters = emptyList(), resultType = "Promise<void>",

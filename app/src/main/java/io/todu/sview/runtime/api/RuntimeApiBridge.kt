@@ -13,6 +13,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     location: (io.todu.sview.data.WindowLocation, Boolean, (Result<Unit>) -> Unit) -> Unit, removeClose: () -> Unit,
     margin: (io.todu.sview.data.WindowMargins, Boolean, (Result<Unit>) -> Unit) -> Unit,
     cornerRadius: (Double, Boolean, (Result<Unit>) -> Unit) -> Unit,
+    backgroundWindow: (Boolean, Boolean) -> java.util.concurrent.CompletableFuture<Boolean>,
     exitApplication: () -> Unit,
     nfcEvent: (JSONObject) -> Unit = {},
     notifyMonitorEvent: (JSONObject) -> Unit = {},
@@ -31,7 +32,7 @@ class RuntimeApiBridge(context: Context, project: Project, repository: io.todu.s
     private val system = SystemApiBridge(context, project, foreground)
     private val preview = io.todu.sview.runtime.preview.ImagePreviewController(context, project.id, foreground)
     private val deviceLinks = DeviceLinkApiBridge(context, project.id, foreground, preview::open)
-    private val interaction = InteractionApiBridge(resize, dismiss, location, removeClose, margin, cornerRadius, preview::open, exitApplication)
+    private val interaction = InteractionApiBridge(resize, dismiss, location, removeClose, margin, cornerRadius, preview::open, backgroundWindow, exitApplication)
 
     fun invoke(request: JSONObject): JSONObject = when {
         request.optString("method") == "script.code" -> code.invoke(request)

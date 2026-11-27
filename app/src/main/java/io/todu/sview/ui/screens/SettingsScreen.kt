@@ -16,7 +16,7 @@ import io.todu.sview.ui.components.*
 
 /** 固定外观与编辑器样式，只保留实际需要管理的设置入口。 */
 @Composable
-fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, onPermissions: () -> Unit, onLogs: () -> Unit, onInterfaces: () -> Unit, clearingCache: Boolean, onClearCache: (() -> Unit) -> Unit, onLanEditor: () -> Unit, lanStatus: String, lanRunning: Boolean, onDatabase: () -> Unit, onWatch: () -> Unit, onAbout: () -> Unit, onHelp: () -> Unit, onFtpEditor: () -> Unit, ftpStatus: String, ftpRunning: Boolean) {
+fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, onPermissions: () -> Unit, onLogs: () -> Unit, onInterfaces: () -> Unit, clearingCache: Boolean, onClearCache: (() -> Unit) -> Unit, onLanEditor: () -> Unit, lanStatus: String, lanRunning: Boolean, onDatabase: () -> Unit, onWatch: () -> Unit, onAbout: () -> Unit, onHelp: () -> Unit, onFtpEditor: () -> Unit, ftpStatus: String, ftpRunning: Boolean, onBackup: () -> Unit) {
     var confirmClear by remember { mutableStateOf(false) }
     var cacheCleared by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
@@ -46,6 +46,8 @@ fun SettingsScreen(wide: Boolean, onBack: () -> Unit, onTemplates: () -> Unit, o
                 valueColor = if (ftpRunning) androidx.compose.ui.graphics.Color(0xFF42856B) else Muted)
             Spacer(Modifier.height(16.dp))
             Text("通用", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 10.dp))
+            SettingRow("folder-sync", "数据备份还原", onClick = onBackup)
+            HorizontalDivider(color = Line)
             SettingRow("trash", "清除缓存", value = if (clearingCache) "清理中…" else if (cacheCleared) "已清除" else null,
                 onClick = if (clearingCache) null else ({ cacheCleared = false; confirmClear = true }))
             HorizontalDivider(color = Line)

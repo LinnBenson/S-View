@@ -65,6 +65,16 @@ internal class OverlayWindow(private val context: Context, private val manager: 
             manager.addView(background, params(-1, -1).apply { flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE })
         }
     }
+    var hidden = false
+        private set
+
+    fun background(enabled: Boolean) {
+        hidden = enabled
+        val visibility = if (enabled) View.GONE else View.VISIBLE
+        view.visibility = visibility
+        backdrop?.visibility = visibility
+    }
+
     fun configurationChanged() { relayout?.invoke() }
     fun close() {
         relayout = null

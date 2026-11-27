@@ -54,7 +54,7 @@ fun HomeScreen(projects: List<Project>, categories: List<String>, wide: Boolean,
     var draggingPage by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(pager.currentPage) { tabs.animateScrollToItem(pager.currentPage) }
     Column(Modifier.fillMaxSize()) {
-        PageHeader("项目", showDivider = false, titleContent = if (wide) null else ({ SViewMark() })) {
+        PageHeader("项目", showDivider = false, titleContent = if (wide) null else ({ HomeSViewMark() })) {
             // 同步期间保持按钮占位，只显示不带进度的加载状态。
             if (watchSyncBusy) {
                 Box(Modifier.size(44.dp).semantics { contentDescription = "正在同步手表" }, contentAlignment = Alignment.Center) {

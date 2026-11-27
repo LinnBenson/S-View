@@ -38,6 +38,7 @@ internal object BrowserEngine {
     /** 同一项目复用持久化容器，不同项目即使地址相同也不共享网页数据。 */
     fun openSession(context: Context, projectId: String, overlay: Boolean = false): GeckoSession {
         prepareStorage(context)
+        check(sessions.isEmpty()) { "已有项目正在运行" }
         val session = GeckoSession(GeckoSessionSettings.Builder().contextId(contextId(context, projectId)).build())
         val engine = get(context)
         try {

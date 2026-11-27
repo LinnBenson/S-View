@@ -91,8 +91,9 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
             running = null
             if (active.exitOnClose && !model.appExiting) onExit()
         }
+        val visibleRun = running.takeIf { io.todu.sview.runtime.background.BackgroundWindow.active == null }
         fun back() {
-            val active = running
+            val active = visibleRun
             if (active?.exitOnClose == true) closeRun(active)
             else if (active != null) scope.launch { lock.withLock { stopRun() } }
             else if (page != "home") page = "home" else onExit()
@@ -106,10 +107,10 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
         LaunchedEffect(model.error) { if (model.error != null) leaving = false }
         // MaterialTheme 只定义色板，Surface 负责向系统页面提供浅色文字。
         Surface(Modifier.fillMaxSize(), color = Color.Black, contentColor = MaterialTheme.colorScheme.onSurface) {
-            Box(Modifier.fillMaxSize().background(Color.Black).then(if (running == null) Modifier.watchEdgeSwipe(round, ::back) else Modifier)) {
+            Box(Modifier.fillMaxSize().background(Color.Black).then(if (visibleRun == null) Modifier.watchEdgeSwipe(round, ::back) else Modifier)) {
                 when {
                     // 磁贴窗口淡出和退出落盘期间保持黑底，避免露出应用主页。
-                    leaving || running?.exitOnClose == true || runRequest != null || launching -> Unit
+                    leaving || visibleRun?.exitOnClose == true || runRequest != null || launching -> Unit
                     !model.ready -> CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.Center), strokeWidth = 2.dp)
                     page == "home" -> WatchProjects(model.projects, model.watchSyncBusy || model.appExiting || launching, grid,
                         !model.clearingCache && !model.watchSyncBusy && !model.appExiting,
@@ -151,7 +152,8 @@ fun WatchWorkspace(model: WorkspaceModel, onExit: () -> Unit, runRequest: Pair<S
                     DisposableEffect(active) { active.mounted = true; onDispose {} }
                     RuntimeWindow(active.project, model.repository, { model.appendLog(active.project, it) },
                         model::cornerRadiusRunProject, model::marginRunProject, model::locateRunProject, model::resizeRunProject,
-                        { model.error = it }, onReleased = { active.released.complete(Unit) }) { closeRun(active) }
+                        { model.error = it }, onReleased = { active.released.complete(Unit) },
+                        onReplaced = { if (running === active) running = null }) { closeRun(active) }
                 } }
                 model.error?.let { error ->
                     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -195,7 +197,7 @@ private fun WatchProjects(projects: List<Project>, busy: Boolean, grid: Boolean,
         ScalingLazyColumn(state = list, autoCentering = null, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(if (grid) 12.dp else WatchListSpacing)) {
             item {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    SViewMark(modifier = Modifier.size(26.dp), tint = Color(0xFFF0F2F8))
+                    HomeSViewMark(modifier = Modifier.size(26.dp), tint = Color(0xFFF0F2F8))
                     Row(Modifier.fillMaxWidth().padding(top = 4.dp).offset(y = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                         IconAction("shield", "权限设置", onPermissions, tint = Color(0xFFBAC3D6), iconSize = 18.dp)
                         IconAction("trash", "清除缓存", onClear, tint = Color(0xFFBAC3D6), enabled = canClear, iconSize = 18.dp)

@@ -13,8 +13,8 @@ class SharedDatabase private constructor(private val context: Context) {
     private var openedPath: String? = null
     private var openedHelper: SQLiteOpenHelper? = null
     private val helper: SQLiteOpenHelper get() {
-        val path = if (io.todu.sview.wear.WatchDevice.isWatch(context))
-            java.io.File(io.todu.sview.wear.WatchWorkspaceStore.root(context), "shared-values.db").path else "shared-values.db"
+        val root = io.todu.sview.wear.WatchWorkspaceStore.root(context)
+        val path = if (root == context.filesDir) "shared-values.db" else java.io.File(root, "shared-values.db").path
         if (openedPath != path) {
             openedHelper?.close()
             openedHelper = createHelper(context, path)

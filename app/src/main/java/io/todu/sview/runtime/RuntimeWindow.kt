@@ -51,7 +51,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     persistCornerRadius: (String, Double, (Result<Unit>) -> Unit) -> Unit,
     persistMargin: (String, io.todu.sview.data.WindowMargins, (Result<Unit>) -> Unit) -> Unit,
     persistLocation: (String, io.todu.sview.data.WindowLocation, (Result<Unit>) -> Unit) -> Unit,
-    persistSize: (String, WindowDimension, WindowDimension, (Result<Unit>) -> Unit) -> Unit, onError: (String) -> Unit, onReleased: () -> Unit = {}, share: io.todu.sview.share.SharedPayload? = null, onClose: () -> Unit) {
+    persistSize: (String, WindowDimension, WindowDimension, (Result<Unit>) -> Unit) -> Unit, onError: (String) -> Unit, onReleased: () -> Unit = {}, share: io.todu.sview.share.SharedPayload? = null, onReplaced: ((Boolean) -> Unit)? = null, onClose: () -> Unit) {
     val context = LocalContext.current
     val watch = remember(context) { io.todu.sview.wear.WatchDevice.isWatch(context) }
     val windowBackground = if (watch) Color.Black else Color.White
@@ -81,20 +81,28 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     var runtimeHeight by remember(project.id) { mutableStateOf(project.height) }
     var server by remember(project.id) { mutableStateOf<ProjectServer?>(null) }
     var session by remember(project.id) { mutableStateOf<GeckoSession?>(null) }
+    var hidden by remember(project.id) { mutableStateOf(false) }
+    var backgroundWindow by remember(project.id) { mutableStateOf<io.todu.sview.runtime.background.BackgroundWindow?>(null) }
+    var resumeDocument by remember(project.id) { mutableStateOf(false) }
     val webPrompts = remember(project.id) {
         io.todu.sview.runtime.prompts.WebPromptController(repository, project.id)
     }
     val mediaPermissions = remember(project.id) {
         WebMediaPermissions(context, { server?.uri }, {
-            !closing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            !closing && !hidden && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
         })
     }
+    lateinit var releaseHidden: () -> Unit
     val closeWindow: () -> Unit = {
         if (!closing) {
             closing = true
             val acknowledged = runCatching { server?.events?.beginClose() }.getOrNull()
             scope.launch {
-                coroutineScope {
+                if (hidden) {
+                    // 宿主退到后台后没有动画帧，停止按钮仍须及时释放服务和页面。
+                    withTimeoutOrNull(300) { acknowledged?.await() }
+                    releaseHidden()
+                } else coroutineScope {
                     val animation = launch { appearance.animateTo(0f, tween(160, easing = FastOutSlowInEasing)) }
                     withTimeoutOrNull(300) { acknowledged?.await() }
                     animation.join()
@@ -109,7 +117,32 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
             notifyMonitorEvent = { server?.events?.notifyMonitorEvent(it) },
             localServerEvent = { server?.events?.localServerEvent(it) },
             exitApplication = { RuntimeAppExit.request(context.applicationContext) },
-            foreground = { !closing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) },
+            foreground = { !closing && !hidden && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) },
+            backgroundWindow = { enabled, dynamic ->
+                check(!closing) { "运行窗口已关闭" }
+                if (!enabled && backgroundWindow == null) return@RuntimeApiBridge java.util.concurrent.CompletableFuture.completedFuture(true)
+                val controller = backgroundWindow ?: io.todu.sview.runtime.background.BackgroundWindow(
+                    context, generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
+                        .filterIsInstance<android.app.Activity>().firstOrNull(), project.name,
+                    visible = { overlay != null || owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) },
+                    hide = { value ->
+                        hidden = value
+                        overlay?.background(value)
+                        if (value) {
+                            resumeDocument = true
+                            session?.setActive(true)
+                            session?.setFocused(false)
+                            // 仅配对持有 Gecko 的执行计数，隐藏窗口无需启动悬浮显示用的定位监听。
+                            org.mozilla.gecko.GeckoThread.onResume()
+                        } else {
+                            org.mozilla.gecko.GeckoThread.onPause()
+                            if (!closing) session?.setFocused(true)
+                        }
+                    },
+                    stop = closeWindow
+                ).also { backgroundWindow = it }
+                controller.change(enabled, dynamic)
+            },
             resize = { width, height, persist, complete ->
                 val apply: (Result<Unit>) -> Unit = { result ->
                     if (result.isSuccess && !closing) { runtimeWidth = width; runtimeHeight = height }
@@ -147,6 +180,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     }
     // 异常退出和组合销毁共用同一释放入口；先断开引用，重复调用不会重复关闭。
     fun releaseResources() {
+        backgroundWindow?.close()
         val oldSession = session
         val oldServer = server
         session = null
@@ -165,8 +199,10 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
         oldServer?.let { cleanupResource("资源服务") { it.close() } }
     }
 
+    releaseHidden = ::releaseResources
+
     DisposableEffect(exitToken) {
-        RuntimeAppExit.register(exitToken) {
+        RuntimeAppExit.register(exitToken, { backgroundWindow?.requested == true }) { nextOverlay ->
             // 应用退出不能等待后台页面的动画帧或重组，直接完成关闭通知和资源释放。
             if (!closing) {
                 closing = true
@@ -175,7 +211,9 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
             }
             releaseResources()
             startupJob?.let { it.cancel(); it.join() }
-            onClose()
+            // 后台宿主可能尚未重组，资源已释放即可让下一次运行取得窗口。
+            RuntimeAppExit.unregister(exitToken)
+            if (nextOverlay != null && onReplaced != null) onReplaced(nextOverlay) else onClose()
         }
         onDispose { RuntimeAppExit.unregister(exitToken) }
     }
@@ -238,8 +276,8 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) systemApi.pause()
-            if (event == Lifecycle.Event.ON_STOP) { systemApi.background(); foreground = false; session?.setActive(false); session?.setFocused(false) }
-            if (event == Lifecycle.Event.ON_START) { foreground = true; session?.setActive(true); session?.setFocused(true) }
+            if (event == Lifecycle.Event.ON_STOP) { systemApi.background(); foreground = false; if (!hidden) session?.setActive(false); session?.setFocused(false) }
+            if (event == Lifecycle.Event.ON_START) { foreground = true; backgroundWindow?.onReturn(); session?.setActive(true); session?.setFocused(!hidden) }
         }
         owner.lifecycle.addObserver(observer)
         onDispose {
@@ -266,6 +304,7 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
             dismissTopmost()
         }
     }
+    if (hidden) return
     RuntimeWindowHost(project.backdropTransparency, dismissTopmost, closeFromClick) {
         if (overlay != null) SideEffect {
             runCatching { overlay.layout(runtimeWidth, runtimeHeight, runtimeMargins, runtimeLocation, project.backdropTransparency, closeFromClick) }
@@ -308,8 +347,17 @@ fun RuntimeWindow(project: Project, repository: ProjectRepository, onLog: (Strin
                     // 首帧遮盖与窗口底色一致，手表加载时不闪白。
                     coverUntilFirstPaint(nativeBackground)
                     setSession(activeSession)
-                    server?.let { activeSession.loadUri(it.uri) }
-                } }, update = { view ->
+                    if (resumeDocument) {
+                        resumeDocument = false
+                        activeSession.setActive(true)
+                        activeSession.setFocused(true)
+                    } else server?.let { activeSession.loadUri(it.uri) }
+                } }, onRelease = { view ->
+                    if (hidden) {
+                        view.releaseSession()
+                        activeSession.setActive(true)
+                    }
+                }, update = { view ->
                     (view.background as? android.graphics.drawable.GradientDrawable)?.cornerRadius = radius.value * view.resources.displayMetrics.density
                 }, modifier = Modifier.fillMaxSize()) }
                 // 页面、合成和纹理更新都完成后再淡出；后台停止转动。

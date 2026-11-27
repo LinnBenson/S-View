@@ -148,8 +148,7 @@ class ProjectRepository(private val context: Context) {
     fun ensureRuntime(id: String) { knownProjects.find { it.id == id }?.let { runtimeArtifacts.update(it) } }
 
     /** 已校验的手表工作区切换后只更新索引，生成网页入口仍留到点击运行时。 */
-    fun acceptWatchProjects(items: List<Project>) {
-        check(io.todu.sview.wear.WatchDevice.isWatch(context))
+    fun acceptWorkspaceProjects(items: List<Project>) {
         knownProjects = items.toList()
     }
 

@@ -36,7 +36,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         if (!Settings.canDrawOverlays(this)) Handler(Looper.getMainLooper()).post { stopSelf() }
     }
     private val screenReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) { stopSelf() }
+        override fun onReceive(context: Context?, intent: Intent?) { if (window?.hidden != true) stopSelf() }
     }
 
     override fun onCreate() {
@@ -67,7 +67,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                 val project = model.projects.find { it.id == id } ?: error("项目不存在，请重新配置快捷方式")
                 // 复用工作区的保存和准备队列，避免读取编辑器尚未落盘的代码。
                 val ready = CompletableDeferred<io.todu.sview.data.Project>()
-                model.prepareRun(id) { ready.complete(it) }
+                model.prepareRun(id, nextOverlay = true) { ready.complete(it) }
                 val prepared = withTimeoutOrNull(15000) { ready.await() } ?: error(model.error ?: "项目准备超时")
                 window?.close(); window = null
                 if (registry.currentState.isAtLeast(Lifecycle.State.STARTED)) registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
@@ -89,7 +89,14 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                     SViewTheme { CompositionLocalProvider(LocalRuntimeOverlay provides host) {
                         RuntimeWindow(prepared, model.repository, { model.appendLog(prepared, it) },
                             model::cornerRadiusRunProject, model::marginRunProject, model::locateRunProject, model::resizeRunProject,
-                            { message -> Toast.makeText(this@OverlayService, message, Toast.LENGTH_LONG).show() }, onClose = { stopSelf() })
+                            { message -> Toast.makeText(this@OverlayService, message, Toast.LENGTH_LONG).show() },
+                            onReplaced = { nextOverlay ->
+                                if (window === host) {
+                                    window = null
+                                    host.close()
+                                    if (!nextOverlay) stopSelf()
+                                }
+                            }, onClose = { stopSelf() })
                     } }
                 }
                 host.attach(prepared.backdropTransparency) { stopSelf() }
@@ -107,7 +114,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private fun notification(name: String): Notification {
         val close = PendingIntent.getService(this, 0, Intent(this, OverlayService::class.java).setAction("close"), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, "floating_runtime").setSmallIcon(R.drawable.lucide_code)
+        return Notification.Builder(this, "floating_runtime").setSmallIcon(R.drawable.lucide_server_crash)
             .setContentTitle(name).setContentText("项目正在悬浮窗口中运行").setContentIntent(open)
             .setOngoing(true).addAction(Notification.Action.Builder(null, "关闭", close).build()).build()
     }

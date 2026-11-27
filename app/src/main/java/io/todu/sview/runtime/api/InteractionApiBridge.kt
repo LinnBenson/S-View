@@ -19,6 +19,7 @@ internal class InteractionApiBridge(private val resize: (WindowDimension, Window
     private val margin: (io.todu.sview.data.WindowMargins, Boolean, (Result<Unit>) -> Unit) -> Unit,
     private val cornerRadius: (Double, Boolean, (Result<Unit>) -> Unit) -> Unit,
     private val preview: (String) -> Unit,
+    private val backgroundWindow: (Boolean, Boolean) -> CompletableFuture<Boolean>,
     private val exitApplication: () -> Unit) : Closeable {
     private val main = MainThreadCalls()
     private val handler = Handler(Looper.getMainLooper())
@@ -28,7 +29,11 @@ internal class InteractionApiBridge(private val resize: (WindowDimension, Window
 
     fun invoke(json: JSONObject): JSONObject = try {
         val request = InteractionApiRequest.parse(json)
-        when (request) {
+        val value = when (request) {
+            is InteractionApiRequest.Background -> {
+                val result = main.invoke { backgroundWindow(request.enabled, request.dynamic) } as CompletableFuture<*>
+                try { result.get(10, TimeUnit.SECONDS) } catch (error: ExecutionException) { throw (error.cause as? Exception ?: error) }
+            }
             is InteractionApiRequest.Preview -> preview(request.path)
             is InteractionApiRequest.CornerRadius -> changeAndWait { cornerRadius(request.cornerRadius, request.persist, it) }
             is InteractionApiRequest.Margin -> changeAndWait { margin(request.margins, request.persist, it) }
@@ -37,7 +42,7 @@ internal class InteractionApiBridge(private val resize: (WindowDimension, Window
             InteractionApiRequest.RemoveClose -> main.invoke { removeClose(); JSONObject.NULL }
             InteractionApiRequest.CloseThis, InteractionApiRequest.Close -> main.invoke { JSONObject.NULL }
         }
-        JSONObject().put("ok", true).put("value", JSONObject.NULL)
+        JSONObject().put("ok", true).put("value", if (request is InteractionApiRequest.Background) value else JSONObject.NULL)
     } catch (error: Exception) { ApiErrors.failure(error) }
 
     /** 持久化需等项目配置写入完成，再把成功结果回复给脚本。 */

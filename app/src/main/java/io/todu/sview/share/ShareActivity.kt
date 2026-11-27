@@ -2,6 +2,7 @@ package io.todu.sview.share
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
@@ -21,6 +22,7 @@ import io.todu.sview.data.Project
 import io.todu.sview.data.WorkspaceOwner
 import io.todu.sview.runtime.RuntimeAppExit
 import io.todu.sview.runtime.RuntimeWindow
+import io.todu.sview.ui.components.HomeSViewMark
 import io.todu.sview.ui.components.AppIcon
 import io.todu.sview.ui.theme.SViewTheme
 import io.todu.sview.wear.WatchDevice
@@ -34,6 +36,11 @@ class ShareActivity : ComponentActivity() {
         enableEdgeToEdge()
         receiver.receive(intent)
         setContent { SViewTheme { Content() } }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        io.todu.sview.runtime.background.BackgroundWindow.accept(this, intent)
     }
 
     @Composable private fun Content() {
@@ -50,7 +57,7 @@ class ShareActivity : ComponentActivity() {
         fun start(project: Project) {
             if (preparing || running != null || payload == null) return
             receiver.selectedId = project.id
-            if (RuntimeAppExit.hasWindows) { runError = "请先关闭正在运行的窗口"; return }
+            if (RuntimeAppExit.hasForegroundWindows) { runError = "请先关闭正在运行的窗口"; return }
             if (workspace.appExiting || workspace.watchSyncBusy || workspace.clearingCache) { runError = "请等待当前操作完成"; return }
             runError = null
             workspace.error = null
@@ -98,6 +105,15 @@ class ShareActivity : ComponentActivity() {
                         items(matches, key = { it.id }) { project ->
                             ShareProjectCard(project, compact = watch) { start(project) }
                         }
+                    }
+                }
+                if (running != null && io.todu.sview.runtime.background.BackgroundWindow.active != null) {
+                    HomeSViewMark()
+                    // 返回工作区时保留分享任务，用户仍可从首页或通知恢复。
+                    BackHandler {
+                        val home = if (watch) io.todu.sview.wear.WatchActivity::class.java else io.todu.sview.MainActivity::class.java
+                        startActivity(android.content.Intent(this@ShareActivity, home).addFlags(
+                            android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP))
                     }
                 }
                 running?.let { project ->

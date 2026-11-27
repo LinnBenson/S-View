@@ -33,7 +33,7 @@ object ScriptNotifications {
         val intent = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.lucide_code)
+            .setSmallIcon(R.drawable.lucide_server_crash)
             .setContentTitle(request.title)
             .setContentText(request.message)
             .setSubText(project.name)

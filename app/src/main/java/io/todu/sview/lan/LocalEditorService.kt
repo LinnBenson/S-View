@@ -84,7 +84,7 @@ class LocalEditorService : Service() {
         val stop = PendingIntent.getService(this, 0, Intent(this, LocalEditorService::class.java).setAction("stop"), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.lucide_code)
+        return Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.lucide_server_crash)
             .setContentTitle("局域网编辑器")
             .setContentText(sessions.joinToString("、") { it.name }.ifEmpty { "正在停止" })
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)

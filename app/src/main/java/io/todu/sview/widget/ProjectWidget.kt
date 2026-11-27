@@ -35,7 +35,7 @@ internal object WidgetStore {
     }
     fun remove(context: Context, id: Int) { preferences(context).edit().remove(id.toString()).apply() }
     fun projects(context: Context): List<Project> {
-        val file = File(context.filesDir, "projects.json")
+        val file = File(io.todu.sview.wear.WatchWorkspaceStore.root(context), "projects.json")
         if (!file.exists()) return emptyList()
         val array = JSONArray(file.readText())
         return List(array.length()) { ProjectJson.decode(array.getJSONObject(it)) }

@@ -131,7 +131,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** 运行前等待最新脚本落盘，避免首次加载读到旧内容。 */
-    fun prepareRun(id: String? = projectId, onReady: (Project) -> Unit) {
+    fun prepareRun(id: String? = projectId, nextOverlay: Boolean = false, onReady: (Project) -> Unit) {
         if (watchSyncBusy || appExiting) return
         saveJob?.cancel()
         val current = projects.find { it.id == id } ?: return
@@ -142,6 +142,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
             mutationLock.withLock {
                 check(!watchSyncBusy && !appExiting && !clearingCache) { "请等待当前操作完成" }
                 io { repository.ensureRuntime(current.id) }
+                io.todu.sview.runtime.RuntimeAppExit.finishBackgroundRuns(nextOverlay)
                 onReady(requireNotNull(projects.find { it.id == current.id }) { "项目不存在" })
             }
         }
@@ -542,6 +543,32 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
         } finally { archiveBusy = false }
     }
 
+    /** 与编辑器和局域网写入共用队列；运行中的脚本可直接修改资源，应先结束。 */
+    fun transferBackup(uri: Uri, restore: Boolean) = mutate {
+        check(ready && !appExiting && !clearingCache) { "请等待当前操作完成" }
+        check(!io.todu.sview.runtime.RuntimeAppExit.hasWindows) { "请先关闭正在运行的脚本" }
+        archiveBusy = true
+        try {
+            saveJob?.cancel()
+            if (!saved && fileReady) persist(projectId, filePath, code)
+            logWriter.flush()
+            val context = getApplication<Application>()
+            val backup = WorkspaceBackup(context, repository)
+            if (restore) {
+                val snapshot = io { backup.restore(uri) }
+                projects = snapshot.projects
+                categories = snapshot.categories
+                databaseEntries = snapshot.database
+                logSizes = emptyMap()
+                io { io.todu.sview.widget.ProjectWidget.refresh(context) }
+                archiveMessage = "已还原 ${projects.size} 个项目、全局模板和数据库"
+            } else {
+                io { backup.write(uri, projects, categories) }
+                archiveMessage = "备份已保存"
+            }
+        } finally { archiveBusy = false }
+    }
+
     private val database by lazy { SharedDatabase.get(getApplication()) }
     var watchSyncBusy by mutableStateOf(false); private set
     var appExiting by mutableStateOf(false); private set
@@ -615,7 +642,7 @@ class WorkspaceModel(application: Application) : AndroidViewModel(application) {
             }
             database.closeForSync()
             io.todu.sview.wear.WatchWorkspaceStore.activate(getApplication(), staging)
-            repository.acceptWatchProjects(incoming)
+            repository.acceptWorkspaceProjects(incoming)
         }
         io.todu.sview.wear.WatchProjectTileService.refresh(getApplication())
         projects = incoming

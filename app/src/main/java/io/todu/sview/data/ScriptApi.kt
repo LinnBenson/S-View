@@ -66,6 +66,7 @@ object ScriptApi {
             }, storage: {},
             interaction: {
                 monitor,
+                background(enabled, dynamic = false) { return call('interaction.background', { enabled, dynamic }); },
                 async closeThis() { await call('interaction.closeThis', {}); },
                 async close() { await call('interaction.close', {}); },
                 async location(location, persist = false) { await waitWindowMonitor('onLocation'); await call('interaction.location', { location, persist }); },

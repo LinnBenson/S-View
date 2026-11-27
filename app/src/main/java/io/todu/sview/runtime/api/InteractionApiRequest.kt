@@ -5,6 +5,7 @@ import org.json.JSONObject
 
 /** 解析窗口操作；尺寸默认临时生效，persist 为 true 时保存配置。 */
 internal sealed interface InteractionApiRequest {
+    data class Background(val enabled: Boolean, val dynamic: Boolean) : InteractionApiRequest
     data class Margin(val margins: io.todu.sview.data.WindowMargins, val persist: Boolean) : InteractionApiRequest
     data class CornerRadius(val cornerRadius: Double, val persist: Boolean) : InteractionApiRequest
     data class Preview(val path: String) : InteractionApiRequest
@@ -18,6 +19,12 @@ internal sealed interface InteractionApiRequest {
         fun parse(json: JSONObject): InteractionApiRequest {
             val args = json.getJSONObject("args")
             return when (json.getString("method")) {
+                "interaction.background" -> {
+                    val enabled = args.opt("enabled")
+                    val dynamic = args.opt("dynamic") ?: false
+                    require(enabled is Boolean && dynamic is Boolean) { "enabled 和 dynamic 应为 boolean" }
+                    Background(enabled, dynamic)
+                }
                 "interaction.preview" -> {
                     val path = args.get("path")
                     require(path is String && path.isNotBlank() && path.length <= 4096) { "path 应为非空图片路径" }
